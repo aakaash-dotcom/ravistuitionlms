@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { Notice } from '@/lib/types';
-import { Plus, Trash2, X, Loader2, Bell, FileText } from 'lucide-react';
+import BackBar from '@/components/BackBar';
+import { Plus, Trash2, X, Loader2, Bell, FileText, Image as ImageIcon } from 'lucide-react';
 
 export default function AdminNotices() {
   const [notices, setNotices] = useState<Notice[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ title: '', content: '', file_url: '' });
+  const [form, setForm] = useState({ title: '', content: '', file_url: '', image_url: '' });
   const [saving, setSaving] = useState(false);
 
   async function load() {
@@ -40,12 +41,13 @@ export default function AdminNotices() {
     });
     setSaving(false);
     setShowForm(false);
-    setForm({ title: '', content: '', file_url: '' });
+    setForm({ title: '', content: '', file_url: '', image_url: '' });
     load();
   }
 
   return (
     <div className="space-y-4">
+      <BackBar to="/admin" label="Back to Dashboard" />
       <div className="flex items-center justify-between">
         <h2 className="section-title">Notices</h2>
         <button onClick={() => setShowForm(true)} className="btn-primary">
@@ -71,13 +73,8 @@ export default function AdminNotices() {
                   <div className="font-bold text-sm">{n.title}</div>
                   <p className="text-sm text-slate-600 mt-1">{n.content}</p>
                   {n.file_url && (
-                    <a
-                      href={n.file_url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-xs text-blue-600 flex items-center gap-1 mt-1"
-                    >
-                      <FileText size={12} /> Attachment
+                    <a href={n.file_url} target="_blank" rel="noreferrer" className="text-xs text-blue-600 flex items-center gap-1 mt-1">
+                      <FileText size={12} /> Download attachment
                     </a>
                   )}
                   <div className="text-xs text-slate-400 mt-1">
@@ -103,7 +100,7 @@ export default function AdminNotices() {
 
       {showForm && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="bg-white w-full sm:max-w-md sm:rounded-xl">
+          <div className="bg-white w-full sm:max-w-md sm:rounded-xl max-h-[92vh] overflow-y-auto">
             <div className="p-4 border-b flex items-center justify-between">
               <h3 className="font-bold">Add Notice</h3>
               <button onClick={() => setShowForm(false)}>
@@ -120,7 +117,14 @@ export default function AdminNotices() {
                 <textarea className="input min-h-[100px]" value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} />
               </div>
               <div>
-                <label className="label">File URL (optional)</label>
+                <label className="label">Image URL (shown to parents, downloadable)</label>
+                <input className="input" value={form.image_url} onChange={(e) => setForm({ ...form, image_url: e.target.value })} placeholder="https://..." />
+                {form.image_url && (
+                  <img src={form.image_url} alt="preview" className="w-full h-32 object-cover rounded-lg mt-2" />
+                )}
+              </div>
+              <div>
+                <label className="label">File URL (PDF or document, optional)</label>
                 <input className="input" value={form.file_url} onChange={(e) => setForm({ ...form, file_url: e.target.value })} />
               </div>
             </div>

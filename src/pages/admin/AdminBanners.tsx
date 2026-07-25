@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { Banner } from '@/lib/types';
+import BackBar from '@/components/BackBar';
 import { Plus, Trash2, X, Loader2, Image } from 'lucide-react';
 
 const AUDIENCES = ['Everyone', 'Parents Only', 'Students Only'];
@@ -54,6 +55,7 @@ export default function AdminBanners() {
 
   return (
     <div className="space-y-4">
+      <BackBar to="/admin" label="Back to Dashboard" />
       <div className="flex items-center justify-between">
         <h2 className="section-title">Banners</h2>
         <button onClick={() => setShowForm(true)} className="btn-primary">
@@ -77,6 +79,9 @@ export default function AdminBanners() {
               <div className="p-3">
                 <div className="font-bold text-sm">{b.title}</div>
                 <div className="text-xs text-slate-400">{b.audience}</div>
+                {b.link_url && (
+                  <div className="text-xs text-blue-600 truncate mt-0.5">Link: {b.link_url}</div>
+                )}
                 <div className="flex gap-2 mt-2">
                   <button
                     onClick={() => toggle(b)}
@@ -116,7 +121,7 @@ export default function AdminBanners() {
                 <img src={form.image_url} alt="preview" className="w-full h-32 object-cover rounded-lg" />
               )}
               <div>
-                <label className="label">Link URL (optional)</label>
+                <label className="label">Link URL (where banner takes you when tapped)</label>
                 <input className="input" value={form.link_url} onChange={(e) => setForm({ ...form, link_url: e.target.value })} />
               </div>
               <div>

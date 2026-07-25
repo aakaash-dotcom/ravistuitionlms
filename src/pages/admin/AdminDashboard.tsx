@@ -13,6 +13,7 @@ import {
   Image,
   FileText,
   HelpCircle,
+  Settings,
 } from 'lucide-react';
 
 export default function AdminDashboard() {
@@ -74,6 +75,7 @@ export default function AdminDashboard() {
     { to: '/admin/materials', label: 'Materials', icon: BookMarked, color: 'bg-cyan-500' },
     { to: '/admin/banners', label: 'Banners', icon: Image, color: 'bg-pink-500' },
     { to: '/admin/fees', label: 'Fees', icon: Wallet, color: 'bg-emerald-500' },
+    { to: '/admin/settings', label: 'Settings', icon: Settings, color: 'bg-slate-500' },
   ];
 
   return (

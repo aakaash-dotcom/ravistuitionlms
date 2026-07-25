@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { CLASSES } from '@/lib/brand';
 import type { FeeRow, Student } from '@/lib/types';
+import BackBar from '@/components/BackBar';
 import { Plus, X, Loader2, Wallet, Search } from 'lucide-react';
 
 export default function AdminFees() {
@@ -57,7 +58,6 @@ export default function AdminFees() {
       payment_date: form.payment_date,
       remark: form.remark || null,
     });
-    // update student fee_paid
     const newPaid = Number(payFor.fee_paid) + Number(form.amount);
     await supabase.from('students').update({ fee_paid: newPaid }).eq('id', payFor.id);
     setSaving(false);
@@ -68,6 +68,7 @@ export default function AdminFees() {
 
   return (
     <div className="space-y-4">
+      <BackBar to="/admin" label="Back to Dashboard" />
       <h2 className="section-title">Fees</h2>
 
       <div className="card p-3 grid grid-cols-2 md:grid-cols-3 gap-3">

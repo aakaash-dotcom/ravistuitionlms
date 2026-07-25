@@ -1,12 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import {
-  CLASSES,
-  STREAMS,
-  COMMERCE_ELECTIVES,
-} from '@/lib/brand';
+import { CLASSES, STREAMS, COMMERCE_ELECTIVES } from '@/lib/brand';
 import { getSubjectsForClass } from '@/lib/subjects';
 import type { Student, TestReport } from '@/lib/types';
+import BackBar from '@/components/BackBar';
 import {
   ClipboardPaste,
   Save,
@@ -177,6 +174,7 @@ export default function AdminTests() {
 
   return (
     <div className="space-y-4">
+      <BackBar to="/admin" label="Back to Dashboard" />
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h2 className="section-title flex items-center gap-2">
           <Grid3x3 size={20} className="text-blue-600" /> Marks Entry (Grid)

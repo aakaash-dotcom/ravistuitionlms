@@ -11,6 +11,7 @@ import AdminMaterials from '@/pages/admin/AdminMaterials';
 import AdminBanners from '@/pages/admin/AdminBanners';
 import AdminFees from '@/pages/admin/AdminFees';
 import AdminMcq from '@/pages/admin/AdminMcq';
+import AdminSettings from '@/pages/admin/AdminSettings';
 import ParentLayout from '@/pages/parent/ParentLayout';
 import ParentDashboard from '@/pages/parent/ParentDashboard';
 import ParentTests from '@/pages/parent/ParentTests';
@@ -41,6 +42,7 @@ export default function App() {
           <Route path="banners" element={<AdminBanners />} />
           <Route path="fees" element={<AdminFees />} />
           <Route path="mcq" element={<AdminMcq />} />
+          <Route path="settings" element={<AdminSettings />} />
         </Route>
         <Route path="/parent" element={<ParentLayout />}>
           <Route index element={<ParentDashboard />} />

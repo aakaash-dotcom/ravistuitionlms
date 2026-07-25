@@ -4,7 +4,7 @@ import { useLang } from '@/components/LanguageProvider';
 import { t } from '@/lib/i18n';
 import type { Notice } from '@/lib/types';
 import BackBar from '@/components/BackBar';
-import { Loader2, Bell, FileText } from 'lucide-react';
+import { Loader2, Bell, FileText, Download } from 'lucide-react';
 
 export default function ParentNotices() {
   const { lang } = useLang();
@@ -13,11 +13,7 @@ export default function ParentNotices() {
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase
-        .from('notices')
-        .select('*')
-        .eq('active', true)
-        .order('created_at', { ascending: false });
+      const { data } = await supabase.from('notices').select('*').eq('active', true).order('created_at', { ascending: false });
       setRows((data as Notice[]) || []);
       setLoading(false);
     })();
@@ -44,17 +40,17 @@ export default function ParentNotices() {
                 <span className="font-bold">{n.title}</span>
               </div>
               <p className="text-sm text-slate-600">{n.content}</p>
+              {n.file_url && n.file_url.match(/\.(jpg|jpeg|png|gif|webp)$/i) && (
+                <a href={n.file_url} target="_blank" rel="noreferrer" className="block mt-2">
+                  <img src={n.file_url} alt={n.title} className="w-full max-h-64 object-cover rounded-lg" />
+                </a>
+              )}
               <div className="text-xs text-slate-400 mt-2">
                 {new Date(n.created_at || '').toLocaleDateString()}
               </div>
               {n.file_url && (
-                <a
-                  href={n.file_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="btn-ghost mt-3 !py-1.5 text-xs"
-                >
-                  <FileText size={14} /> {t(lang, 'download')}
+                <a href={n.file_url} target="_blank" rel="noreferrer" download className="btn-ghost mt-3 !py-1.5 text-xs">
+                  <Download size={14} /> {t(lang, 'download')}
                 </a>
               )}
             </div>

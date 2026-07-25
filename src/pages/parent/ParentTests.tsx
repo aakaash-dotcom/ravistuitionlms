@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useSession } from '@/lib/useSession';
-import BackBar from '@/components/BackBar';
 import { useLang } from '@/components/LanguageProvider';
 import { t } from '@/lib/i18n';
-import type { DailyTest, Student, TestReport } from '@/lib/types';
+import type { Student, TestReport } from '@/lib/types';
 import { downloadReportCard, shareReportOnWhatsapp, gradeFor, pctOf } from '@/lib/pdf';
+import BackBar from '@/components/BackBar';
+import { BRAND } from '@/lib/brand';
 import {
   Download,
   MessageCircle,
@@ -16,7 +17,7 @@ import {
   BarChart3,
 } from 'lucide-react';
 
-type Tab = 'Daily' | 'Weekly' | 'Monthly';
+type Mode = 'Weekly' | 'Monthly';
 
 export default function ParentTests() {
   const { lang } = useLang();
@@ -25,9 +26,9 @@ export default function ParentTests() {
   const [kids, setKids] = useState<Student[]>([]);
   const [active, setActive] = useState<Student | null>(null);
   const [reports, setReports] = useState<TestReport[]>([]);
-  const [daily, setDaily] = useState<DailyTest[]>([]);
-  const [tab, setTab] = useState<Tab>('Weekly');
   const [loading, setLoading] = useState(true);
+  const [mode, setMode] = useState<Mode>('Weekly');
+  const [subjectFilter, setSubjectFilter] = useState<string>('All');
   const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
@@ -44,73 +45,86 @@ export default function ParentTests() {
     if (!active) return;
     (async () => {
       setLoading(true);
-      const [{ data: r }, { data: d }] = await Promise.all([
-        supabase.from('test_reports').select('*').eq('student_id', active.id).order('test_date', { ascending: false }),
-        supabase.from('daily_tests').select('*').eq('student_id', active.id).order('created_at', { ascending: false }),
-      ]);
+      const { data: r } = await supabase.from('test_reports').select('*').eq('student_id', active.id).order('test_date', { ascending: true });
       setReports((r as TestReport[]) || []);
-      setDaily((d as DailyTest[]) || []);
       setLoading(false);
     })();
   }, [active]);
 
-  const allRows = useMemo(() => {
-    const weekly = reports.map((r) => ({
-      subject: r.subject,
-      type: r.test_type,
-      marks: Number(r.marks),
-      outOf: Number(r.out_of),
-      pct: pctOf(Number(r.marks), Number(r.out_of)),
-      date: r.test_date,
-      remark: r.remark,
-    }));
-    const mcq = daily.map((d) => ({
-      subject: d.subject || 'MCQ',
-      type: 'Daily MCQ',
-      marks: Number(d.score),
-      outOf: Number(d.total),
-      pct: Math.round(Number(d.percentage)),
-      date: new Date(d.created_at).toISOString().slice(0, 10),
-      remark: null,
-    }));
-    return [...weekly, ...mcq];
-  }, [reports, daily]);
+  const modeReports = useMemo(() => reports.filter((r) => r.test_type === mode), [reports, mode]);
 
+  // periods: weeks (W1, W2...) or months (Jan, Feb...) sorted chronologically
+  const periods = useMemo(() => {
+    const set = new Set<string>();
+    modeReports.forEach((r) => {
+      if (mode === 'Weekly' && r.week) set.add(r.week);
+      if (mode === 'Monthly' && r.month) set.add(r.month);
+    });
+    return Array.from(set).sort((a, b) => {
+      if (mode === 'Weekly') {
+        const na = parseInt(a.replace(/\D/g, '')) || 0;
+        const nb = parseInt(b.replace(/\D/g, '')) || 0;
+        return na - nb;
+      }
+      const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+      return months.indexOf(a) - months.indexOf(b);
+    });
+  }, [modeReports, mode]);
+
+  const subjectsInData = useMemo(() => {
+    const set = new Set<string>();
+    modeReports.forEach((r) => set.add(r.subject));
+    return Array.from(set);
+  }, [modeReports]);
+
+  const chartSubjects = subjectFilter === 'All' ? subjectsInData : [subjectFilter];
+
+  // Build series per subject: average % per period
+  const series = useMemo(() => {
+    return chartSubjects.map((subject) => {
+      const points = periods.map((p) => {
+        const matching = modeReports.filter((r) => {
+          const rp = mode === 'Weekly' ? r.week : r.month;
+          return r.subject === subject && rp === p;
+        });
+        if (matching.length === 0) return null;
+        const avg = matching.reduce((sum, r) => sum + pctOf(Number(r.marks), Number(r.out_of)), 0) / matching.length;
+        return Math.round(avg);
+      });
+      return { subject, points };
+    });
+  }, [chartSubjects, periods, modeReports, mode]);
+
+  // Summary
   const filtered = useMemo(() => {
-    if (tab === 'Daily') return allRows.filter((r) => r.type === 'Daily MCQ');
-    if (tab === 'Weekly') return allRows.filter((r) => r.type === 'Weekly');
-    return allRows.filter((r) => r.type === 'Monthly');
-  }, [allRows, tab]);
+    let list = modeReports;
+    if (subjectFilter !== 'All') list = list.filter((r) => r.subject === subjectFilter);
+    return list;
+  }, [modeReports, subjectFilter]);
 
-  const avg = filtered.length > 0 ? Math.round(filtered.reduce((s, r) => s + r.pct, 0) / filtered.length) : 0;
-  const highest = filtered.length > 0 ? Math.max(...filtered.map((r) => r.pct)) : 0;
-  const lowest = filtered.length > 0 ? Math.min(...filtered.map((r) => r.pct)) : 0;
+  const avg = filtered.length > 0 ? Math.round(filtered.reduce((sum, r) => sum + pctOf(Number(r.marks), Number(r.out_of)), 0) / filtered.length) : 0;
+  const highest = filtered.length > 0 ? Math.max(...filtered.map((r) => pctOf(Number(r.marks), Number(r.out_of)))) : 0;
+  const lowest = filtered.length > 0 ? Math.min(...filtered.map((r) => pctOf(Number(r.marks), Number(r.out_of)))) : 0;
 
-  const dist = {
-    excellent: filtered.filter((r) => r.pct >= 90).length,
-    good: filtered.filter((r) => r.pct >= 75 && r.pct < 90).length,
-    average: filtered.filter((r) => r.pct >= 50 && r.pct < 75).length,
-    below: filtered.filter((r) => r.pct < 50).length,
-  };
+  // Chart dimensions
+  const chartW = 320;
+  const chartH = 140;
+  const pad = 30;
+  const colors = ['#0052FF', '#F59E0B', '#22C55E', '#EF4444', '#8B5CF6', '#EC4899'];
 
-  // subject-wise
-  const subjectMap: Record<string, { total: number; count: number }> = {};
-  filtered.forEach((r) => {
-    subjectMap[r.subject] = subjectMap[r.subject] || { total: 0, count: 0 };
-    subjectMap[r.subject].total += r.pct;
-    subjectMap[r.subject].count += 1;
-  });
-  const subjectStats = Object.entries(subjectMap).map(([subject, v]) => ({
-    subject,
-    avg: Math.round(v.total / v.count),
-    count: v.count,
-  }));
+  function pointX(i: number) {
+    if (periods.length <= 1) return chartW / 2;
+    return pad + (i * (chartW - pad * 2)) / (periods.length - 1);
+  }
+  function pointY(val: number) {
+    return chartH - pad - (val / 100) * (chartH - pad * 2);
+  }
 
   async function download() {
     if (!active) return;
     setDownloading(true);
     try {
-      await downloadReportCard(active, reports, daily);
+      await downloadReportCard(active, reports, []);
     } finally {
       setDownloading(false);
     }
@@ -157,176 +171,168 @@ export default function ParentTests() {
         <div className="card p-8 text-center text-slate-500">
           <Loader2 size={20} className="animate-spin inline mr-2" /> {t(lang, 'loading')}
         </div>
-      ) : filtered.length === 0 ? (
+      ) : reports.length === 0 ? (
         <div className="card p-8 text-center text-slate-500">{t(lang, 'noData')}</div>
       ) : (
         <>
-          {/* Overall summary */}
-          <div className="card p-4">
-            <div className="flex items-center gap-4">
-              {/* Circular progress */}
-              <div className="relative w-24 h-24 shrink-0">
-                <svg className="w-24 h-24 -rotate-90" viewBox="0 0 100 100">
-                  <circle cx="50" cy="50" r="42" fill="none" stroke="#e2e8f0" strokeWidth="10" />
-                  <circle
-                    cx="50"
-                    cy="50"
-                    r="42"
-                    fill="none"
-                    stroke="#0052FF"
-                    strokeWidth="10"
-                    strokeLinecap="round"
-                    strokeDasharray={`${(avg / 100) * 264} 264`}
-                  />
+          {/* Mode tabs: Weekly / Monthly */}
+          <div className="flex gap-2">
+            {(['Weekly', 'Monthly'] as Mode[]).map((m) => (
+              <button
+                key={m}
+                onClick={() => { setMode(m); setSubjectFilter('All'); }}
+                className={`badge ${mode === m ? 'bg-blue-600 text-white' : 'bg-white text-slate-600 border border-slate-200'}`}
+              >
+                {m === 'Weekly' ? t(lang, 'weekly') : t(lang, 'monthly')}
+              </button>
+            ))}
+          </div>
+
+          {/* Subject filter */}
+          <div className="card p-3">
+            <label className="label">Subject</label>
+            <div className="flex gap-2 overflow-x-auto no-scrollbar">
+              <button
+                onClick={() => setSubjectFilter('All')}
+                className={`badge ${subjectFilter === 'All' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'}`}
+              >
+                All Subjects
+              </button>
+              {subjectsInData.map((sub) => (
+                <button
+                  key={sub}
+                  onClick={() => setSubjectFilter(sub)}
+                  className={`badge ${subjectFilter === sub ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'}`}
+                >
+                  {sub}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Improvement line chart */}
+          {periods.length > 0 ? (
+            <div className="card p-4">
+              <h3 className="font-bold text-sm mb-3 flex items-center gap-2">
+                <TrendingUp size={16} className="text-blue-600" /> Performance Trend ({mode})
+              </h3>
+              <div className="overflow-x-auto">
+                <svg width={chartW} height={chartH} className="min-w-full">
+                  {/* Y axis labels */}
+                  {[0, 25, 50, 75, 100].map((v) => (
+                    <g key={v}>
+                      <line x1={pad} y1={pointY(v)} x2={chartW - pad} y2={pointY(v)} stroke="#e2e8f0" strokeWidth="1" />
+                      <text x={pad - 6} y={pointY(v) + 3} textAnchor="end" fontSize="8" fill="#94a3b8">{v}</text>
+                    </g>
+                  ))}
+                  {/* X axis labels */}
+                  {periods.map((p, i) => (
+                    <text key={p} x={pointX(i)} y={chartH - pad + 12} textAnchor="middle" fontSize="8" fill="#94a3b8">{p}</text>
+                  ))}
+                  {/* Lines */}
+                  {series.map((s, si) => {
+                    const color = colors[si % colors.length];
+                    const pts = s.points.map((p, i) => (p === null ? null : `${pointX(i)},${pointY(p)}`)).filter(Boolean) as string[];
+                    if (pts.length === 0) return null;
+                    return (
+                      <g key={s.subject}>
+                        <polyline points={pts.join(' ')} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+                        {s.points.map((p, i) => p === null ? null : (
+                          <circle key={i} cx={pointX(i)} cy={pointY(p)} r="3" fill={color} />
+                        ))}
+                      </g>
+                    );
+                  })}
                 </svg>
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-2xl font-bold text-slate-900">{avg}%</span>
-                  <span className="text-[10px] text-slate-400">{t(lang, 'average')}</span>
-                </div>
               </div>
-              <div className="flex-1 grid grid-cols-2 gap-2">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-green-100 text-green-600 flex items-center justify-center">
-                    <TrendingUp size={16} />
+              {/* Legend */}
+              <div className="flex flex-wrap gap-2 mt-2">
+                {series.map((s, si) => (
+                  <span key={s.subject} className="badge bg-slate-100 text-slate-600">
+                    <span className="w-2 h-2 rounded-full mr-1" style={{ background: colors[si % colors.length] }} />
+                    {s.subject}
+                  </span>
+                ))}
+              </div>
+              <p className="text-xs text-slate-400 mt-2">
+                The line moves up when your child scores higher than the previous {mode === 'Weekly' ? 'week' : 'month'}.
+              </p>
+            </div>
+          ) : (
+            <div className="card p-6 text-center text-sm text-slate-500">
+              No {mode.toLowerCase()} marks recorded yet.
+            </div>
+          )}
+
+          {/* Summary */}
+          {filtered.length > 0 && (
+            <div className="card p-4">
+              <div className="flex items-center gap-4">
+                <div className="relative w-20 h-20 shrink-0">
+                  <svg className="w-20 h-20 -rotate-90" viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="42" fill="none" stroke="#e2e8f0" strokeWidth="10" />
+                    <circle cx="50" cy="50" r="42" fill="none" stroke="#0052FF" strokeWidth="10" strokeLinecap="round" strokeDasharray={`${(avg / 100) * 264} 264`} />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-lg font-bold">{avg}%</span>
                   </div>
+                </div>
+                <div className="flex-1 grid grid-cols-3 gap-2">
                   <div>
-                    <div className="font-bold text-sm">{highest}%</div>
+                    <div className="font-bold text-sm text-green-600">{highest}%</div>
                     <div className="text-xs text-slate-500">{t(lang, 'highest')}</div>
                   </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-red-100 text-red-600 flex items-center justify-center">
-                    <TrendingDown size={16} />
-                  </div>
                   <div>
-                    <div className="font-bold text-sm">{lowest}%</div>
+                    <div className="font-bold text-sm text-red-600">{lowest}%</div>
                     <div className="text-xs text-slate-500">{t(lang, 'lowest')}</div>
                   </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center">
-                    <BarChart3 size={16} />
-                  </div>
                   <div>
-                    <div className="font-bold text-sm">{filtered.length}</div>
-                    <div className="text-xs text-slate-500">{t(lang, 'totalTests')}</div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center">
-                    <Award size={16} />
-                  </div>
-                  <div>
-                    <div className="font-bold text-sm">{gradeFor(avg)}</div>
+                    <div className="font-bold text-sm text-amber-600">{gradeFor(avg)}</div>
                     <div className="text-xs text-slate-500">{t(lang, 'grade')}</div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
-
-          {/* Subject-wise bars */}
-          {subjectStats.length > 0 && (
-            <div className="card p-4">
-              <h3 className="font-bold text-sm mb-3">{t(lang, 'subjectWise')}</h3>
-              <div className="space-y-2">
-                {subjectStats.map((s) => (
-                  <div key={s.subject}>
-                    <div className="flex items-center justify-between text-xs mb-1">
-                      <span className="font-semibold">{s.subject}</span>
-                      <span className="text-slate-500">
-                        {s.avg}% · {s.count} tests
-                      </span>
-                    </div>
-                    <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full ${
-                          s.avg >= 75 ? 'bg-green-500' : s.avg >= 50 ? 'bg-amber-500' : 'bg-red-500'
-                        }`}
-                        style={{ width: `${s.avg}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
           )}
 
-          {/* Distribution */}
-          <div className="card p-4">
-            <h3 className="font-bold text-sm mb-3">{t(lang, 'performanceDistribution')}</h3>
-            <div className="grid grid-cols-4 gap-2 text-center">
-              <div>
-                <div className="text-xl font-bold text-green-600">{dist.excellent}</div>
-                <div className="text-[10px] text-slate-500">{t(lang, 'excellent')}</div>
-              </div>
-              <div>
-                <div className="text-xl font-bold text-blue-600">{dist.good}</div>
-                <div className="text-[10px] text-slate-500">{t(lang, 'good')}</div>
-              </div>
-              <div>
-                <div className="text-xl font-bold text-amber-600">{dist.average}</div>
-                <div className="text-[10px] text-slate-500">{t(lang, 'averagePerf')}</div>
-              </div>
-              <div>
-                <div className="text-xl font-bold text-red-600">{dist.below}</div>
-                <div className="text-[10px] text-slate-500">{t(lang, 'below50')}</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Filter tabs */}
-          <div className="flex gap-2 overflow-x-auto no-scrollbar">
-            {(['Daily', 'Weekly', 'Monthly'] as Tab[]).map((tb) => (
-              <button
-                key={tb}
-                onClick={() => setTab(tb)}
-                className={`badge ${tab === tb ? 'bg-blue-600 text-white' : 'bg-white text-slate-600 border border-slate-200'}`}
-              >
-                {tb === 'Daily' ? t(lang, 'dailyMcq') : tb === 'Weekly' ? t(lang, 'weekly') : t(lang, 'monthly')}
-              </button>
-            ))}
-          </div>
-
-          {/* Detailed results */}
-          <div className="card divide-y divide-slate-100">
-            {filtered.map((r, i) => (
-              <div key={i} className="p-3 flex items-center gap-3">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-sm">{r.subject}</span>
-                    <span className="badge bg-slate-100 text-slate-500">{r.type}</span>
-                    <span
-                      className={`badge ${
-                        r.pct >= 90
-                          ? 'bg-green-100 text-green-700'
-                          : r.pct >= 75
-                            ? 'bg-blue-100 text-blue-700'
-                            : r.pct >= 50
-                              ? 'bg-amber-100 text-amber-700'
-                              : 'bg-red-100 text-red-700'
-                      }`}
-                    >
-                      {gradeFor(r.pct)}
-                    </span>
+          {/* Per-period report cards */}
+          {periods.map((p) => {
+            const periodReports = modeReports.filter((r) => (mode === 'Weekly' ? r.week === p : r.month === p));
+            if (periodReports.length === 0) return null;
+            const periodAvg = Math.round(periodReports.reduce((sum, r) => sum + pctOf(Number(r.marks), Number(r.out_of)), 0) / periodReports.length);
+            return (
+              <div key={p} className="card overflow-hidden">
+                <div className="bg-[#0052FF] text-white px-4 py-2 flex items-center gap-2">
+                  <img src={BRAND.logo} alt="logo" className="w-6 h-6 rounded object-cover bg-white/10" />
+                  <div className="flex-1">
+                    <div className="font-bold text-sm">{mode === 'Weekly' ? 'Weekly' : 'Monthly'} Report — {p}</div>
+                    <div className="text-xs text-white/70">{active.name} · {active.class}{active.stream ? ` · ${active.stream}` : ''}</div>
                   </div>
-                  <div className="text-xs text-slate-400">
-                    {r.marks}/{r.outOf} · {r.date}
-                    {r.remark ? ` · ${r.remark}` : ''}
-                  </div>
+                  <span className="badge bg-white/20 text-white">{periodAvg}% · {gradeFor(periodAvg)}</span>
                 </div>
-                <div className="text-right">
-                  <div className="font-bold text-sm">{r.pct}%</div>
-                  <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden mt-1">
-                    <div
-                      className={`h-full ${r.pct >= 75 ? 'bg-green-500' : r.pct >= 50 ? 'bg-amber-500' : 'bg-red-500'}`}
-                      style={{ width: `${r.pct}%` }}
-                    />
-                  </div>
+                <div className="divide-y divide-slate-100">
+                  {periodReports.map((r) => {
+                    const pct = pctOf(Number(r.marks), Number(r.out_of));
+                    return (
+                      <div key={r.id} className="p-3 flex items-center gap-3">
+                        <span className="badge bg-blue-100 text-blue-700">{r.subject}</span>
+                        <div className="flex-1">
+                          <div className="text-sm font-semibold">{r.marks}/{r.out_of}</div>
+                          {r.remark && <div className="text-xs text-slate-400">{r.remark}</div>}
+                        </div>
+                        <div className="text-right">
+                          <div className="font-bold text-sm">{pct}%</div>
+                          <div className="w-14 h-1.5 bg-slate-100 rounded-full overflow-hidden mt-1">
+                            <div className={`h-full ${pct >= 75 ? 'bg-green-500' : pct >= 50 ? 'bg-amber-500' : 'bg-red-500'}`} style={{ width: `${pct}%` }} />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
-            ))}
-          </div>
+            );
+          })}
         </>
       )}
     </div>

@@ -4,7 +4,8 @@ import { useSession } from '@/lib/useSession';
 import BackBar from '@/components/BackBar';
 import { ALL_SUBJECTS } from '@/lib/subjects';
 import type { DiaryEntry } from '@/lib/types';
-import { Loader2, BookOpen, Plus, Send, Clock, CheckCircle2, XCircle } from 'lucide-react';
+import { Loader2, BookOpen, Plus, Send, Clock, CheckCircle2, XCircle, Lock } from 'lucide-react';
+import { getSetting } from '@/lib/settings';
 
 export default function StudentDiary() {
   const s = useSession();
@@ -18,6 +19,7 @@ export default function StudentDiary() {
     entry_date: new Date().toISOString().slice(0, 10),
   });
   const [saving, setSaving] = useState(false);
+  const [diaryEnabled, setDiaryEnabled] = useState(false);
 
   async function load() {
     if (!sid) return;
@@ -33,6 +35,7 @@ export default function StudentDiary() {
 
   useEffect(() => {
     load();
+    getSetting('student_diary_enabled').then((v) => setDiaryEnabled(v === 'true'));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sid]);
 
@@ -57,14 +60,17 @@ export default function StudentDiary() {
       <BackBar to="/student" label="Back" />
       <div className="flex items-center justify-between">
         <h2 className="section-title">Study Diary</h2>
-        <button onClick={() => setShowForm(true)} className="btn-primary">
-          <Plus size={16} /> Add Entry
-        </button>
+        {diaryEnabled && (
+          <button onClick={() => setShowForm(true)} className="btn-primary">
+            <Plus size={16} /> Add Entry
+          </button>
+        )}
       </div>
 
       <p className="text-xs text-slate-500 -mt-2">
-        Write what you studied each day. Your entries are sent to the admin for approval before
-        your parents can see them.
+        {diaryEnabled
+          ? 'Write what you studied each day. Your entries are sent to the admin for approval before your parents can see them.'
+          : 'Your diary entries are added by your teacher in class. Contact your tuition centre if you want to add entries from your phone.'}
       </p>
 
       {loading ? (
@@ -73,7 +79,7 @@ export default function StudentDiary() {
         </div>
       ) : rows.length === 0 ? (
         <div className="card p-8 text-center text-slate-500 flex items-center justify-center gap-2">
-          <BookOpen size={18} /> No diary entries yet. Tap "Add Entry" to record what you studied.
+          {diaryEnabled ? <><BookOpen size={18} /> No diary entries yet. Tap "Add Entry" to record what you studied.</> : <><Lock size={18} /> No diary entries yet.</>}
         </div>
       ) : (
         <div className="space-y-2">

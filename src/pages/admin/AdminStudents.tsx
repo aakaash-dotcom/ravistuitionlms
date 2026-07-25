@@ -9,6 +9,7 @@ import {
   STATUSES,
 } from '@/lib/brand';
 import type { Student } from '@/lib/types';
+import BackBar from '@/components/BackBar';
 import {
   Plus,
   Pencil,
@@ -124,6 +125,7 @@ export default function AdminStudents() {
 
   return (
     <div className="space-y-4">
+      <BackBar to="/admin" label="Back to Dashboard" />
       <div className="flex items-center justify-between">
         <h2 className="section-title">Students</h2>
         <button onClick={openAdd} className="btn-primary">

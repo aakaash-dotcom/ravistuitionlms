@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { CLASSES } from '@/lib/brand';
 import type { Student } from '@/lib/types';
+import BackBar from '@/components/BackBar';
 import {
   Check,
   X,
@@ -96,6 +97,7 @@ export default function AdminAttendance() {
 
   return (
     <div className="space-y-4">
+      <BackBar to="/admin" label="Back to Dashboard" />
       <div className="flex items-center justify-between">
         <h2 className="section-title">Attendance</h2>
         <button onClick={save} className="btn-primary" disabled={saving}>

@@ -1,9 +1,15 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { CLASSES, STREAMS } from '@/lib/brand';
-import { ALL_SUBJECTS } from '@/lib/subjects';
+import { CLASSES } from '@/lib/brand';
+import { ALL_SUBJECTS, getSubjectsForClass } from '@/lib/subjects';
 import type { DiaryEntry, Student } from '@/lib/types';
-import { Plus, Check, X, Clock, Loader2, BookOpen } from 'lucide-react';
+import BackBar from '@/components/BackBar';
+import { Plus, Check, X, Loader2, BookOpen, Search, Trash2 } from 'lucide-react';
+
+interface EntryRow {
+  subject: string;
+  topic: string;
+}
 
 export default function AdminDiary() {
   const [entries, setEntries] = useState<(DiaryEntry & { student_name?: string })[]>([]);
@@ -11,13 +17,10 @@ export default function AdminDiary() {
   const [fClass, setFClass] = useState('');
   const [fStatus, setFStatus] = useState('');
   const [showAdd, setShowAdd] = useState(false);
-  const [form, setForm] = useState({
-    student_id: '',
-    subject: 'Tamil',
-    topic: '',
-    entry_date: new Date().toISOString().slice(0, 10),
-    status: 'Approved',
-  });
+  const [rollSearch, setRollSearch] = useState('');
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [entryDate, setEntryDate] = useState(new Date().toISOString().slice(0, 10));
+  const [rows, setRows] = useState<EntryRow[]>([{ subject: 'Tamil', topic: '' }]);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -50,18 +53,59 @@ export default function AdminDiary() {
     load();
   }
 
-  async function add() {
-    if (!form.student_id || !form.topic) return;
-    setSaving(true);
-    await supabase.from('diary_entries').insert(form);
-    setSaving(false);
-    setShowAdd(false);
-    setForm({ ...form, topic: '' });
+  async function delEntry(e: DiaryEntry) {
+    if (!confirm('Delete this diary entry?')) return;
+    await supabase.from('diary_entries').delete().eq('id', e.id);
     load();
   }
 
+  function pickStudent() {
+    const stu = students.find((s) => s.roll_no.toLowerCase() === rollSearch.toLowerCase());
+    if (stu) {
+      setSelectedStudent(stu);
+      setRollSearch('');
+    } else {
+      alert('No student found with that roll number.');
+    }
+  }
+
+  function addRow() {
+    setRows([...rows, { subject: 'Tamil', topic: '' }]);
+  }
+  function setRow(i: number, patch: Partial<EntryRow>) {
+    setRows((rs) => rs.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
+  }
+  function delRow(i: number) {
+    setRows((rs) => rs.filter((_, idx) => idx !== i));
+  }
+
+  async function save() {
+    if (!selectedStudent) return;
+    const valid = rows.filter((r) => r.topic.trim());
+    if (valid.length === 0) return;
+    setSaving(true);
+    const inserts = valid.map((r) => ({
+      student_id: selectedStudent.id,
+      subject: r.subject,
+      topic: r.topic,
+      entry_date: entryDate,
+      status: 'Approved',
+    }));
+    await supabase.from('diary_entries').insert(inserts);
+    setSaving(false);
+    setShowAdd(false);
+    setSelectedStudent(null);
+    setRows([{ subject: 'Tamil', topic: '' }]);
+    load();
+  }
+
+  const availableSubjects = selectedStudent
+    ? getSubjectsForClass(selectedStudent.class, selectedStudent.stream, selectedStudent.commerce_elective)
+    : ALL_SUBJECTS;
+
   return (
     <div className="space-y-4">
+      <BackBar to="/admin" label="Back to Dashboard" />
       <div className="flex items-center justify-between">
         <h2 className="section-title">Study Diary</h2>
         <button onClick={() => setShowAdd(true)} className="btn-primary">
@@ -121,6 +165,9 @@ export default function AdminDiary() {
                 <button onClick={() => setStatus(e, 'Rejected')} className="btn-ghost !p-1.5" title="Reject">
                   <X size={14} className="text-red-600" />
                 </button>
+                <button onClick={() => delEntry(e)} className="btn-ghost !p-1.5" title="Delete">
+                  <Trash2 size={14} className="text-slate-500" />
+                </button>
               </div>
             </div>
           ))}
@@ -129,78 +176,99 @@ export default function AdminDiary() {
 
       {showAdd && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="bg-white w-full sm:max-w-md sm:rounded-xl">
-            <div className="p-4 border-b flex items-center justify-between">
+          <div className="bg-white w-full sm:max-w-lg sm:rounded-xl max-h-[92vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b p-4 flex items-center justify-between">
               <h3 className="font-bold">Add Diary Entry</h3>
-              <button onClick={() => setShowAdd(false)}>
+              <button onClick={() => { setShowAdd(false); setSelectedStudent(null); setRows([{ subject: 'Tamil', topic: '' }]); }}>
                 <X size={20} className="text-slate-400" />
               </button>
             </div>
             <div className="p-4 space-y-3">
-              <div>
-                <label className="label">Student</label>
-                <select
-                  className="input"
-                  value={form.student_id}
-                  onChange={(e) => setForm({ ...form, student_id: e.target.value })}
-                >
-                  <option value="">Select student</option>
-                  {students.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name} ({s.roll_no} · {s.class})
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="label">Subject</label>
-                <select
-                  className="input"
-                  value={form.subject}
-                  onChange={(e) => setForm({ ...form, subject: e.target.value })}
-                >
-                  {ALL_SUBJECTS.map((s) => (
-                    <option key={s}>{s}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="label">Topic</label>
-                <input
-                  className="input"
-                  value={form.topic}
-                  onChange={(e) => setForm({ ...form, topic: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="label">Date</label>
-                <input
-                  type="date"
-                  className="input"
-                  value={form.entry_date}
-                  onChange={(e) => setForm({ ...form, entry_date: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="label">Status</label>
-                <select
-                  className="input"
-                  value={form.status}
-                  onChange={(e) => setForm({ ...form, status: e.target.value })}
-                >
-                  <option>Approved</option>
-                  <option>Pending</option>
-                </select>
-              </div>
+              {!selectedStudent ? (
+                <div>
+                  <label className="label">Enter Roll Number to find student</label>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input
+                        className="input pl-8"
+                        placeholder="e.g. RT2026001"
+                        value={rollSearch}
+                        onChange={(e) => setRollSearch(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && pickStudent()}
+                      />
+                    </div>
+                    <button onClick={pickStudent} className="btn-primary">Find</button>
+                  </div>
+                  <div className="mt-3 max-h-48 overflow-y-auto rounded-lg border border-slate-200">
+                    {students.slice(0, 50).map((s) => (
+                      <button
+                        key={s.id}
+                        onClick={() => setSelectedStudent(s)}
+                        className="w-full text-left px-3 py-2 hover:bg-slate-50 border-b border-slate-100 text-sm"
+                      >
+                        {s.name} · {s.roll_no} · {s.class}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="card p-3 bg-blue-50 border-blue-200 flex items-center gap-3">
+                    <img src={selectedStudent.photo_url || 'https://images.pexels.com/photos/220457/pexels-photo-220457.jpeg'} className="w-10 h-10 rounded-lg object-cover" alt="" />
+                    <div className="flex-1">
+                      <div className="font-bold text-sm">{selectedStudent.name}</div>
+                      <div className="text-xs text-slate-500">{selectedStudent.roll_no} · {selectedStudent.class}{selectedStudent.stream ? ` · ${selectedStudent.stream}` : ''}</div>
+                    </div>
+                    <button onClick={() => setSelectedStudent(null)} className="text-xs text-blue-600">Change</button>
+                  </div>
+                  <div>
+                    <label className="label">Date</label>
+                    <input type="date" className="input" value={entryDate} onChange={(e) => setEntryDate(e.target.value)} />
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="label !mb-0">Subjects studied</label>
+                      <button onClick={addRow} className="btn-ghost !py-1 text-xs">
+                        <Plus size={12} /> Add subject
+                      </button>
+                    </div>
+                    <div className="space-y-2">
+                      {rows.map((r, i) => (
+                        <div key={i} className="flex gap-2 items-start">
+                          <select className="input w-32" value={r.subject} onChange={(e) => setRow(i, { subject: e.target.value })}>
+                            {availableSubjects.map((s) => (
+                              <option key={s}>{s}</option>
+                            ))}
+                          </select>
+                          <input
+                            className="input flex-1"
+                            placeholder="Topic covered"
+                            value={r.topic}
+                            onChange={(e) => setRow(i, { topic: e.target.value })}
+                          />
+                          {rows.length > 1 && (
+                            <button onClick={() => delRow(i)} className="btn-ghost !p-2">
+                              <X size={14} className="text-red-500" />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
-            <div className="p-4 border-t flex gap-2">
-              <button onClick={add} className="btn-primary flex-1" disabled={saving}>
-                {saving ? <Loader2 size={16} className="animate-spin" /> : 'Save'}
-              </button>
-              <button onClick={() => setShowAdd(false)} className="btn-ghost">
-                Cancel
-              </button>
-            </div>
+            {selectedStudent && (
+              <div className="sticky bottom-0 bg-white border-t p-4 flex gap-2">
+                <button onClick={save} className="btn-primary flex-1" disabled={saving}>
+                  {saving ? <Loader2 size={16} className="animate-spin" /> : 'Save & Approve'}
+                </button>
+                <button onClick={() => { setShowAdd(false); setSelectedStudent(null); setRows([{ subject: 'Tamil', topic: '' }]); }} className="btn-ghost">
+                  Cancel
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

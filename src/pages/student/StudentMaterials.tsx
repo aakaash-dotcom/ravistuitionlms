@@ -48,7 +48,6 @@ export default function StudentMaterials() {
   return (
     <div className="space-y-4">
       <BackBar to="/student" label="Back" />
-      <BackBar to="/student" label="Back" />
       <h2 className="section-title">Study Materials</h2>
 
       <div className="card p-3 grid grid-cols-2 gap-3">

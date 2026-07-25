@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { CLASSES } from '@/lib/brand';
 import { ALL_SUBJECTS } from '@/lib/subjects';
 import type { StudyMaterial } from '@/lib/types';
+import BackBar from '@/components/BackBar';
 import { Plus, Trash2, X, Loader2, BookMarked, Download } from 'lucide-react';
 
 export default function AdminMaterials() {
@@ -45,6 +46,7 @@ export default function AdminMaterials() {
 
   return (
     <div className="space-y-4">
+      <BackBar to="/admin" label="Back to Dashboard" />
       <div className="flex items-center justify-between">
         <h2 className="section-title">Study Materials</h2>
         <button onClick={() => setShowForm(true)} className="btn-primary">
