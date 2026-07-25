@@ -1,0 +1,78 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+Tamil:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-primary: #0052ff;
+  --color-primary-dark: #003ecc;
+  --color-navy: #0f172a;
+  --color-amber: #f59e0b;
+  --color-whatsapp: #25d366;
+}
+
+html {
+  font-family: 'Inter', 'Noto Sans Tamil', system-ui, sans-serif;
+}
+
+body {
+  @apply bg-slate-50 text-slate-900;
+  -webkit-font-smoothing: antialiased;
+}
+
+[lang='ta'] {
+  font-family: 'Noto Sans Tamil', 'Inter', sans-serif;
+}
+
+/* Reusable component classes */
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none;
+  }
+  .btn-primary {
+    @apply btn bg-[#0052FF] text-white hover:bg-[#003ECC];
+  }
+  .btn-amber {
+    @apply btn bg-[#F59E0B] text-white hover:bg-amber-600;
+  }
+  .btn-wa {
+    @apply btn bg-[#25D366] text-white hover:bg-green-600;
+  }
+  .btn-ghost {
+    @apply btn bg-white text-slate-700 border border-slate-300 hover:bg-slate-50;
+  }
+  .btn-danger {
+    @apply btn bg-red-500 text-white hover:bg-red-600;
+  }
+  .card {
+    @apply rounded-xl bg-white shadow-sm border border-slate-200;
+  }
+  .input {
+    @apply w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#0052FF] focus:ring-2 focus:ring-blue-100;
+  }
+  .label {
+    @apply block text-xs font-semibold text-slate-600 mb-1;
+  }
+  .badge {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold;
+  }
+  .stat-card {
+    @apply card p-4 flex items-center gap-3 cursor-pointer hover:shadow-md hover:border-blue-300 transition;
+  }
+  .nav-tile {
+    @apply card p-4 flex flex-col items-center gap-2 cursor-pointer hover:shadow-md hover:border-blue-300 transition text-center;
+  }
+  .section-title {
+    @apply text-lg font-bold text-slate-900;
+  }
+}
+
+/* Hide scrollbars on horizontal scroll rows */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
