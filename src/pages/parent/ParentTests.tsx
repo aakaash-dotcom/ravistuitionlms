@@ -217,9 +217,28 @@ export default function ParentTests() {
                         return (
                           <g key={s.subject}>
                             <polyline points={pts.join(' ')} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
-                            {s.points.map((p, i) => p === null ? null : (
-                              <circle key={i} cx={pointX(i)} cy={pointY(p)} r="3" fill={color} />
-                            ))}
+                            {s.points.map((p, i) => {
+                              if (p === null) return null;
+                              const prev = s.points[i - 1];
+                              const change = prev !== null && prev !== undefined ? p - prev : null;
+                              return (
+                                <g key={i}>
+                                  <circle cx={pointX(i)} cy={pointY(p)} r="3" fill={color} />
+                                  {change !== null && change !== 0 && i > 0 && (
+                                    <text
+                                      x={pointX(i)}
+                                      y={pointY(p) - 8}
+                                      textAnchor="middle"
+                                      fontSize="7"
+                                      fontWeight="bold"
+                                      fill={change > 0 ? '#22C55E' : '#EF4444'}
+                                    >
+                                      {change > 0 ? '+' : ''}{change}%
+                                    </text>
+                                  )}
+                                </g>
+                              );
+                            })}
                           </g>
                         );
                       })}

@@ -106,7 +106,7 @@ export async function downloadPeriodReportCard(
   y += 14;
 
   const colX = [M, M + 160, M + 280, M + 360, M + 440];
-  const headers = ['Subject', 'Marks', 'Out Of', '%', 'Grade'];
+  const headers = ['Subject', 'Marks', 'Out Of', '%'];
   doc.setFillColor(0, 82, 255);
   doc.rect(M, y, W - M * 2, 22, 'F');
   doc.setTextColor(255, 255, 255);
@@ -130,7 +130,6 @@ export async function downloadPeriodReportCard(
     doc.text(String(r.marks), colX[1], y + 14);
     doc.text(String(r.out_of), colX[2], y + 14);
     doc.text(`${pct}%`, colX[3], y + 14);
-    doc.text(gradeFor(pct), colX[4], y + 14);
     totalMarks += Number(r.marks);
     totalOutOf += Number(r.out_of);
     y += 20;
@@ -145,7 +144,6 @@ export async function downloadPeriodReportCard(
   doc.text(String(totalOutOf), colX[2], y + 16);
   const totalPct = pctOf(totalMarks, totalOutOf);
   doc.text(`${totalPct}%`, colX[3], y + 16);
-  doc.text(gradeFor(totalPct), colX[4], y + 16);
   y += 34;
 
   // Footer

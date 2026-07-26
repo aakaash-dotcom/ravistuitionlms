@@ -58,7 +58,7 @@ export default function LoginPage() {
                   className="input pl-9"
                   value={id}
                   onChange={(e) => setId(e.target.value)}
-                  placeholder="8610653352 or RT2026001"
+                  placeholder="6380444830 or RT2026001"
                   autoComplete="username"
                 />
               </div>
@@ -103,13 +103,13 @@ export default function LoginPage() {
 
           <div className="mt-5 pt-4 border-t border-slate-100 text-xs text-slate-500 space-y-1">
             <p>
-              <strong>Demo Admin:</strong> 8610653352 / ravi1234
+              <strong>Admin Login:</strong> 6380444830 / 9840
             </p>
             <p>
-              <strong>Demo Parent:</strong> 9000000001 / AV92UC
+              <strong>Parent:</strong> Use the phone number registered for your child
             </p>
             <p>
-              <strong>Demo Student:</strong> RT2026001 / AV92UC
+              <strong>Student:</strong> Use your roll number
             </p>
           </div>
         </div>
