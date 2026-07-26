@@ -2,12 +2,12 @@ import { createContext, useContext, useState, type ReactNode } from 'react';
 import type { Lang } from '@/lib/i18n';
 
 const LangCtx = createContext<{ lang: Lang; setLang: (l: Lang) => void }>({
-  lang: 'ta',
+  lang: 'en',
   setLang: () => {},
 });
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [lang, setLang] = useState<Lang>('ta');
+  const [lang, setLang] = useState<Lang>('en');
   return (
     <LangCtx.Provider value={{ lang, setLang }}>{children}</LangCtx.Provider>
   );
