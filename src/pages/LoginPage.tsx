@@ -101,17 +101,6 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <div className="mt-5 pt-4 border-t border-slate-100 text-xs text-slate-500 space-y-1">
-            <p>
-              <strong>Admin Login:</strong> 6380444830 / 9840
-            </p>
-            <p>
-              <strong>Parent:</strong> Use the phone number registered for your child
-            </p>
-            <p>
-              <strong>Student:</strong> Use your roll number
-            </p>
-          </div>
         </div>
 
         <p className="text-center text-white/50 text-xs mt-4">
