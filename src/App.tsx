@@ -12,6 +12,9 @@ import AdminBanners from '@/pages/admin/AdminBanners';
 import AdminFees from '@/pages/admin/AdminFees';
 import AdminMcq from '@/pages/admin/AdminMcq';
 import AdminSettings from '@/pages/admin/AdminSettings';
+import AdminTeachers from '@/pages/admin/AdminTeachers';
+import AdminTeacherAttendance from '@/pages/admin/AdminTeacherAttendance';
+import AdminPlanners from '@/pages/admin/AdminPlanners';
 import ParentLayout from '@/pages/parent/ParentLayout';
 import ParentDashboard from '@/pages/parent/ParentDashboard';
 import ParentTests from '@/pages/parent/ParentTests';
@@ -25,6 +28,13 @@ import StudentTests from '@/pages/student/StudentTests';
 import StudentDiary from '@/pages/student/StudentDiary';
 import StudentAttendance from '@/pages/student/StudentAttendance';
 import StudentMaterials from '@/pages/student/StudentMaterials';
+import TeacherLayout from '@/pages/teacher/TeacherLayout';
+import TeacherDashboard from '@/pages/teacher/TeacherDashboard';
+import TeacherMarks from '@/pages/teacher/TeacherMarks';
+import TeacherAttendance from '@/pages/teacher/TeacherAttendance';
+import TeacherDiary from '@/pages/teacher/TeacherDiary';
+import TeacherNotices from '@/pages/teacher/TeacherNotices';
+import TeacherPlanner from '@/pages/teacher/TeacherPlanner';
 
 export default function App() {
   return (
@@ -43,6 +53,9 @@ export default function App() {
           <Route path="fees" element={<AdminFees />} />
           <Route path="mcq" element={<AdminMcq />} />
           <Route path="settings" element={<AdminSettings />} />
+          <Route path="teachers" element={<AdminTeachers />} />
+          <Route path="teacher-attendance" element={<AdminTeacherAttendance />} />
+          <Route path="planners" element={<AdminPlanners />} />
         </Route>
         <Route path="/parent" element={<ParentLayout />}>
           <Route index element={<ParentDashboard />} />
@@ -58,6 +71,14 @@ export default function App() {
           <Route path="diary" element={<StudentDiary />} />
           <Route path="attendance" element={<StudentAttendance />} />
           <Route path="materials" element={<StudentMaterials />} />
+        </Route>
+        <Route path="/teacher" element={<TeacherLayout />}>
+          <Route index element={<TeacherDashboard />} />
+          <Route path="marks" element={<TeacherMarks />} />
+          <Route path="attendance" element={<TeacherAttendance />} />
+          <Route path="diary" element={<TeacherDiary />} />
+          <Route path="notices" element={<TeacherNotices />} />
+          <Route path="planner" element={<TeacherPlanner />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

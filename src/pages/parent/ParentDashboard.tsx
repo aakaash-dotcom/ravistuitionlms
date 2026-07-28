@@ -76,7 +76,7 @@ export default function ParentDashboard() {
       {banners.length > 0 && (
         <div className="rounded-xl overflow-hidden shadow-sm">
           <a href={banners[0].link_url || '#'} target={banners[0].link_url ? '_blank' : undefined} rel="noreferrer">
-            <img src={banners[0].image_url} alt={banners[0].title} className="w-full h-40 object-cover" />
+            <img src={banners[0].image_url} alt={banners[0].title} className="w-full h-auto object-contain" />
           </a>
         </div>
       )}

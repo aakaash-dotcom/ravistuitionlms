@@ -35,13 +35,18 @@ export default function StudentTests() {
       const { data: stu } = await supabase.from('students').select('*').eq('id', sid).maybeSingle();
       setStudent(stu as Student);
       if (stu) {
+        const st = stu as Student;
         const { data: qs } = await supabase
           .from('mcq_quizzes')
           .select('*')
           .eq('active', true)
-          .eq('class', (stu as Student).class)
+          .eq('class', st.class)
           .order('created_at', { ascending: false });
-        setQuizzes((qs as McqQuiz[]) || []);
+        let quizList = (qs as McqQuiz[]) || [];
+        if (st.stream) {
+          quizList = quizList.filter((q) => !q.stream || q.stream === st.stream);
+        }
+        setQuizzes(quizList);
       }
       const { data: p } = await supabase
         .from('daily_tests')

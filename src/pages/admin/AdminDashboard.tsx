@@ -14,6 +14,9 @@ import {
   FileText,
   HelpCircle,
   Settings,
+  UserCog,
+  CalendarClock,
+  ClipboardPen,
 } from 'lucide-react';
 
 export default function AdminDashboard() {
@@ -29,20 +32,22 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     (async () => {
-      const [{ count: total }, { data: feeStudents }, { count: present }, { count: diary }] =
+      const today = new Date().toISOString().slice(0, 10);
+      const [{ count: total }, { data: feeStudents }, { data: presentRows }, { count: diary }] =
         await Promise.all([
           supabase.from('students').select('*', { count: 'exact', head: true }),
           supabase.from('students').select('total_fee, fee_paid'),
           supabase
             .from('attendance')
-            .select('*', { count: 'exact', head: true })
-            .eq('date', new Date().toISOString().slice(0, 10))
+            .select('student_id')
+            .eq('date', today)
             .eq('status', 'Present'),
           supabase
             .from('diary_entries')
             .select('*', { count: 'exact', head: true })
             .eq('status', 'Pending'),
         ]);
+      const distinctPresent = new Set((presentRows || []).map((r: { student_id: string }) => r.student_id)).size;
       const pending =
         (feeStudents || []).reduce(
           (s, r: { total_fee: number; fee_paid: number }) =>
@@ -52,7 +57,7 @@ export default function AdminDashboard() {
       setStats({
         total: total ?? 0,
         pendingFees: pending,
-        presentToday: present ?? 0,
+        presentToday: distinctPresent,
         diaryPending: diary ?? 0,
       });
 
@@ -76,6 +81,9 @@ export default function AdminDashboard() {
     { to: '/admin/banners', label: 'Banners', icon: Image, color: 'bg-pink-500' },
     { to: '/admin/fees', label: 'Fees', icon: Wallet, color: 'bg-emerald-500' },
     { to: '/admin/settings', label: 'Settings', icon: Settings, color: 'bg-slate-500' },
+    { to: '/admin/teachers', label: 'Teachers', icon: UserCog, color: 'bg-teal-500' },
+    { to: '/admin/teacher-attendance', label: 'Teacher Att', icon: CalendarClock, color: 'bg-orange-500' },
+    { to: '/admin/planners', label: 'Planners', icon: ClipboardPen, color: 'bg-violet-500' },
   ];
 
   return (

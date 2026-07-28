@@ -18,6 +18,7 @@ export default function LoginPage() {
     try {
       const s = await login(id, pw);
       if (s.role === 'admin') nav('/admin');
+      else if (s.role === 'teacher') nav('/teacher');
       else if (s.role === 'parent') nav('/parent');
       else nav('/student');
     } catch (e: unknown) {
@@ -41,9 +42,9 @@ export default function LoginPage() {
         </div>
 
         <div className="card p-6">
-          <h2 className="text-lg font-bold text-slate-900 mb-1">Login</h2>
+          <h2 className="text-lg font-bold text-slate-900 mb-1">Welcome</h2>
           <p className="text-sm text-slate-500 mb-4">
-            Parents & Admin: use phone number · Students: use roll number
+            Parents: use your registered phone number &middot; Students: use your roll number
           </p>
 
           <form onSubmit={submit} className="space-y-4">
@@ -58,7 +59,7 @@ export default function LoginPage() {
                   className="input pl-9"
                   value={id}
                   onChange={(e) => setId(e.target.value)}
-                  placeholder="6380444830 or RT2026001"
+                  placeholder="9876543210 or 26001"
                   autoComplete="username"
                 />
               </div>
@@ -100,7 +101,6 @@ export default function LoginPage() {
               )}
             </button>
           </form>
-
         </div>
 
         <p className="text-center text-white/50 text-xs mt-4">

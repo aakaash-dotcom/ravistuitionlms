@@ -4,9 +4,9 @@ export const BRAND = {
   est: 1999,
   years: 26,
   students: '5000+',
-  phone: '86106 53352',
-  phoneRaw: '+918610653352',
-  whatsapp: 'https://wa.me/918610653352',
+  phone: '63804 44830',
+  phoneRaw: '+916380444830',
+  whatsapp: 'https://wa.me/916380444830',
   address:
     'Govindhan Street, DRO Colony Main Rd, opp. Mary Ann School, Alagar Nagar, K.Pudur, Madurai 625007',
   hours: 'Mon-Fri 5-9pm, Sat 9am-1pm, Sun 9am-5pm',

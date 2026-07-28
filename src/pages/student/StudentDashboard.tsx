@@ -92,7 +92,7 @@ export default function StudentDashboard() {
     <div className="space-y-5">
       {banners.length > 0 && (
         <div className="rounded-xl overflow-hidden shadow-sm">
-          <img src={banners[0].image_url} alt={banners[0].title} className="w-full h-40 object-cover" />
+          <img src={banners[0].image_url} alt={banners[0].title} className="w-full h-auto object-contain" />
         </div>
       )}
 

@@ -28,7 +28,11 @@ export default function StudentMaterials() {
           .select('*')
           .or(`class.eq.${st.class},class.is.null`)
           .order('created_at', { ascending: false });
-        setItems((data as StudyMaterial[]) || []);
+        let list = (data as StudyMaterial[]) || [];
+        if (st.stream) {
+          list = list.filter((m) => !m.stream || m.stream === st.stream);
+        }
+        setItems(list);
       }
       setLoading(false);
     })();

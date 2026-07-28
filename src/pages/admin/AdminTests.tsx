@@ -66,12 +66,15 @@ export default function AdminTests() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [grade, stream]);
 
-  // re-init outOf default when changed
+  // re-init outOf default when changed — propagate to all empty cells
   useEffect(() => {
     setGrid((prev) => {
       const g = { ...prev };
       Object.keys(g).forEach((sid) => {
-        g[sid] = g[sid].map((c) => ({ ...c, outOf: c.outOf || outOf }));
+        g[sid] = g[sid].map((c) => ({
+          ...c,
+          outOf: c.marks === '' ? outOf : c.outOf,
+        }));
       });
       return g;
     });

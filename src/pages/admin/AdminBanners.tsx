@@ -75,7 +75,7 @@ export default function AdminBanners() {
         <div className="grid sm:grid-cols-2 gap-3">
           {banners.map((b) => (
             <div key={b.id} className="card overflow-hidden">
-              <img src={b.image_url} alt={b.title} className="w-full h-32 object-cover" />
+              <img src={b.image_url} alt={b.title} className="w-full h-auto object-contain" />
               <div className="p-3">
                 <div className="font-bold text-sm">{b.title}</div>
                 <div className="text-xs text-slate-400">{b.audience}</div>
@@ -118,7 +118,7 @@ export default function AdminBanners() {
                 <input className="input" value={form.image_url} onChange={(e) => setForm({ ...form, image_url: e.target.value })} />
               </div>
               {form.image_url && (
-                <img src={form.image_url} alt="preview" className="w-full h-32 object-cover rounded-lg" />
+                <img src={form.image_url} alt="preview" className="w-full h-auto object-contain rounded-lg" />
               )}
               <div>
                 <label className="label">Link URL (where banner takes you when tapped)</label>

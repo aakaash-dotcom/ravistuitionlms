@@ -5,7 +5,7 @@ import type { Student, AttendanceRow } from '@/lib/types';
 import BackBar from '@/components/BackBar';
 import { Loader2, Save, Sun, Moon } from 'lucide-react';
 
-export default function AdminAttendance() {
+export default function TeacherAttendance() {
   const [students, setStudents] = useState<Student[]>([]);
   const [fClass, setFClass] = useState('10th');
   const [fStream, setFStream] = useState('');
@@ -28,6 +28,7 @@ export default function AdminAttendance() {
       list.forEach((s) => (init[s.id] = 'Present'));
       setStatuses(init);
 
+      // load existing attendance for this date+session
       if (list.length > 0) {
         const { data: existing } = await supabase
           .from('attendance')
@@ -52,6 +53,7 @@ export default function AdminAttendance() {
       status: statuses[s.id] || 'Present',
       session,
     }));
+    // delete existing for this date+session, then insert
     await supabase.from('attendance').delete().in('student_id', students.map((s) => s.id)).eq('date', date).eq('session', session);
     await supabase.from('attendance').insert(rows);
     setSaving(false);
@@ -59,16 +61,10 @@ export default function AdminAttendance() {
     setTimeout(() => setSaved(false), 2000);
   }
 
-  function markAll(status: string) {
-    const next: Record<string, string> = {};
-    students.forEach((s) => (next[s.id] = status));
-    setStatuses(next);
-  }
-
   return (
     <div className="space-y-4">
-      <BackBar to="/admin" label="Back to Dashboard" />
-      <h2 className="section-title">Attendance</h2>
+      <BackBar to="/teacher" label="Back" />
+      <h2 className="section-title">Mark Attendance</h2>
 
       <div className="card p-3 grid grid-cols-2 md:grid-cols-4 gap-3">
         <select className="input" value={fClass} onChange={(e) => setFClass(e.target.value)}>
@@ -99,11 +95,6 @@ export default function AdminAttendance() {
             <Moon size={14} /> Evening
           </button>
         </div>
-      </div>
-
-      <div className="flex gap-2">
-        <button onClick={() => markAll('Present')} className="btn-ghost !py-1.5 text-xs">Mark All Present</button>
-        <button onClick={() => markAll('Absent')} className="btn-ghost !py-1.5 text-xs">Mark All Absent</button>
       </div>
 
       {loading ? (

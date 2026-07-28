@@ -21,7 +21,7 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-[lang='ta'] {
+[lang='ta'], .font-tamil {
   font-family: 'Noto Sans Tamil', 'Inter', sans-serif;
 }
 

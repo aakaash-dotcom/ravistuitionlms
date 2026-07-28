@@ -26,11 +26,24 @@ export interface AdminUser {
   role: string;
 }
 
+export interface Teacher {
+  id: string;
+  name: string;
+  phone: string;
+  password: string;
+  subjects: string[];
+  classes: string[];
+  schedule: string;
+  status: string;
+  created_at?: string;
+}
+
 export interface AttendanceRow {
   id: string;
   student_id: string;
   date: string;
   status: string;
+  session?: string | null;
 }
 
 export interface TestReport {
@@ -109,6 +122,7 @@ export interface StudyMaterial {
   type: string;
   subject: string | null;
   class: string | null;
+  stream: string | null;
   file_url: string;
   created_at?: string;
 }
@@ -134,17 +148,37 @@ export interface FeeRow {
   created_at?: string;
 }
 
-export type Role = 'admin' | 'parent' | 'student';
+export interface PlannerEntry {
+  id: string;
+  teacher_id: string;
+  week_start: string;
+  day: string;
+  subject: string | null;
+  planned_topic: string | null;
+  taught_topic: string | null;
+  status: string;
+  created_at?: string;
+}
+
+export interface TeacherAttendanceRow {
+  id: string;
+  teacher_id: string;
+  date: string;
+  session: string;
+  status: string;
+  created_at?: string;
+}
+
+export type Role = 'admin' | 'parent' | 'student' | 'teacher';
 
 export interface Session {
   role: Role;
-  // For admin: admin user id. For parent/student: student id(s).
   adminId?: string;
   adminName?: string;
-  // For parent: linked student ids (could be multiple children).
   studentIds?: string[];
-  // For student: single student id.
   studentId?: string;
   studentName?: string;
   rollNo?: string;
+  teacherId?: string;
+  teacherName?: string;
 }

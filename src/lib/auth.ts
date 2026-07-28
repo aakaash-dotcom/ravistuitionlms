@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import type { Session, Student, AdminUser } from './types';
+import type { Session, Student, AdminUser, Teacher } from './types';
 
 const SESSION_KEY = 'rtc_session';
 
@@ -22,9 +22,8 @@ export function clearSession() {
 }
 
 // Login flow:
-// 1. If input matches a 10-digit phone, try admin first, then parent (by parent_phone).
-// 2. Otherwise (or if admin/parent fails), try student by roll_no.
-// Returns a Session or throws an Error with a message.
+// 1. If input matches a 10-digit phone, try admin first, then teacher, then parent (by parent_phone).
+// 2. Otherwise (or if admin/teacher/parent fails), try student by roll_no.
 export async function login(identifier: string, password: string): Promise<Session> {
   const id = identifier.trim();
   const isPhone = /^\d{10}$/.test(id);
@@ -43,6 +42,19 @@ export async function login(identifier: string, password: string): Promise<Sessi
       return s;
     }
 
+    // Teacher
+    const { data: teacher } = await supabase
+      .from('teachers')
+      .select('*')
+      .eq('phone', id)
+      .maybeSingle();
+    if (teacher && (teacher as Teacher).password === password) {
+      const tc = teacher as Teacher;
+      const s: Session = { role: 'teacher', teacherId: tc.id, teacherName: tc.name };
+      saveSession(s);
+      return s;
+    }
+
     // Parent: find students by parent_phone
     const { data: kids } = await supabase
       .from('students')
@@ -50,7 +62,6 @@ export async function login(identifier: string, password: string): Promise<Sessi
       .eq('parent_phone', id)
       .eq('status', 'Active');
     if (kids && kids.length > 0) {
-      // password must match any child's password (parents share the student password)
       const match = (kids as Student[]).find((k) => k.password === password);
       if (match) {
         const s: Session = {
@@ -62,7 +73,7 @@ export async function login(identifier: string, password: string): Promise<Sessi
       }
       throw new Error('Wrong password for this parent phone number.');
     }
-    throw new Error('No admin or parent found for this phone number.');
+    throw new Error('No account found for this phone number.');
   }
 
   // Student by roll number

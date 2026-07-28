@@ -3,15 +3,18 @@ import { supabase } from '@/lib/supabase';
 import { useSession } from '@/lib/useSession';
 import type { AttendanceRow } from '@/lib/types';
 import BackBar from '@/components/BackBar';
-import { Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Loader2, Sun, Moon, CheckCircle2, XCircle, Clock } from 'lucide-react';
+
+interface DaySessions {
+  morning?: string;
+  evening?: string;
+}
 
 export default function StudentAttendance() {
   const s = useSession();
   const sid = s?.studentId;
   const [rows, setRows] = useState<AttendanceRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [calMonth, setCalMonth] = useState(new Date().getMonth());
-  const [calYear, setCalYear] = useState(new Date().getFullYear());
 
   useEffect(() => {
     if (!sid) return;
@@ -22,24 +25,23 @@ export default function StudentAttendance() {
     })();
   }, [sid]);
 
-  const present = rows.filter((r) => r.status === 'Present').length;
-  const total = rows.length;
-  const pct = total > 0 ? Math.round((present / total) * 100) : 0;
+  const byDate: Record<string, DaySessions> = {};
+  rows.forEach((r) => {
+    if (!byDate[r.date]) byDate[r.date] = {};
+    if (r.session === 'Evening') byDate[r.date].evening = r.status;
+    else byDate[r.date].morning = r.status;
+  });
 
-  const statusByDate: Record<string, string> = {};
-  rows.forEach((r) => { statusByDate[r.date] = r.status; });
+  const totalSessions = rows.length;
+  const presentSessions = rows.filter((r) => r.status === 'Present').length;
+  const pct = totalSessions > 0 ? Math.round((presentSessions / totalSessions) * 100) : 0;
+  const distinctDays = Object.keys(byDate).length;
 
-  const firstDay = new Date(calYear, calMonth, 1).getDay();
-  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
-  const monthName = new Date(calYear, calMonth).toLocaleString('default', { month: 'long', year: 'numeric' });
-
-  function prevMonth() {
-    if (calMonth === 0) { setCalMonth(11); setCalYear(calYear - 1); }
-    else setCalMonth(calMonth - 1);
-  }
-  function nextMonth() {
-    if (calMonth === 11) { setCalMonth(0); setCalYear(calYear + 1); }
-    else setCalMonth(calMonth + 1);
+  function StatusBadge({ status }: { status?: string }) {
+    if (!status) return <span className="text-xs text-slate-300">—</span>;
+    if (status === 'Present') return <span className="badge bg-green-100 text-green-700"><CheckCircle2 size={10} className="mr-1" /> {status}</span>;
+    if (status === 'Absent') return <span className="badge bg-red-100 text-red-700"><XCircle size={10} className="mr-1" /> {status}</span>;
+    return <span className="badge bg-amber-100 text-amber-700"><Clock size={10} className="mr-1" /> {status}</span>;
   }
 
   return (
@@ -48,12 +50,12 @@ export default function StudentAttendance() {
       <h2 className="section-title">Attendance</h2>
       <div className="grid grid-cols-3 gap-3">
         <div className="card p-3 text-center">
-          <div className="text-xl font-bold text-green-600">{present}</div>
+          <div className="text-xl font-bold text-green-600">{presentSessions}</div>
           <div className="text-xs text-slate-500">Present</div>
         </div>
         <div className="card p-3 text-center">
-          <div className="text-xl font-bold text-slate-700">{total}</div>
-          <div className="text-xs text-slate-500">Total Days</div>
+          <div className="text-xl font-bold text-slate-700">{distinctDays}</div>
+          <div className="text-xs text-slate-500">Days</div>
         </div>
         <div className="card p-3 text-center">
           <div className="text-xl font-bold text-blue-600">{pct}%</div>
@@ -64,44 +66,37 @@ export default function StudentAttendance() {
         <div className="card p-8 text-center text-slate-500">
           <Loader2 size={20} className="animate-spin inline mr-2" /> Loading...
         </div>
+      ) : Object.keys(byDate).length === 0 ? (
+        <div className="card p-8 text-center text-slate-500">No attendance records yet.</div>
       ) : (
-        <div className="card p-4">
-          <div className="flex items-center justify-between mb-3">
-            <button onClick={prevMonth} className="btn-ghost !p-1.5"><ChevronLeft size={16} /></button>
-            <span className="font-bold text-sm">{monthName}</span>
-            <button onClick={nextMonth} className="btn-ghost !p-1.5"><ChevronRight size={16} /></button>
-          </div>
-          <div className="grid grid-cols-7 gap-1 text-center">
-            {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
-              <div key={i} className="text-[10px] font-semibold text-slate-400 py-1">{d}</div>
-            ))}
-            {Array.from({ length: firstDay }).map((_, i) => (
-              <div key={`e${i}`} />
-            ))}
-            {Array.from({ length: daysInMonth }).map((_, i) => {
-              const day = i + 1;
-              const dateStr = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-              const status = statusByDate[dateStr];
+        <div className="space-y-2">
+          {Object.entries(byDate)
+            .sort((a, b) => b[0].localeCompare(a[0]))
+            .map(([date, sessions]) => {
+              const dayName = new Date(date).toLocaleDateString('default', { weekday: 'short' });
               return (
-                <div
-                  key={day}
-                  className={`aspect-square rounded-lg flex flex-col items-center justify-center text-xs ${
-                    status === 'Present' ? 'bg-green-100 text-green-700 font-bold' :
-                    status === 'Absent' ? 'bg-red-100 text-red-700 font-bold' :
-                    status === 'Leave' ? 'bg-amber-100 text-amber-700 font-bold' :
-                    'bg-slate-50 text-slate-400'
-                  }`}
-                >
-                  {day}
+                <div key={date} className="card p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <div>
+                      <span className="font-bold text-sm">{dayName}</span>
+                      <span className="text-xs text-slate-400 ml-2">{date}</span>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="flex items-center gap-2">
+                      <Sun size={14} className="text-amber-500" />
+                      <span className="text-xs text-slate-500">Morning:</span>
+                      <StatusBadge status={sessions.morning} />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Moon size={14} className="text-indigo-500" />
+                      <span className="text-xs text-slate-500">Evening:</span>
+                      <StatusBadge status={sessions.evening} />
+                    </div>
+                  </div>
                 </div>
               );
             })}
-          </div>
-          <div className="flex gap-3 mt-3 text-xs">
-            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-green-100" /> Present</span>
-            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-red-100" /> Absent</span>
-            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-amber-100" /> Leave</span>
-          </div>
         </div>
       )}
     </div>

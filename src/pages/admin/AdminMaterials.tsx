@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { CLASSES } from '@/lib/brand';
+import { CLASSES, STREAMS } from '@/lib/brand';
 import { ALL_SUBJECTS } from '@/lib/subjects';
 import type { StudyMaterial } from '@/lib/types';
 import BackBar from '@/components/BackBar';
@@ -15,9 +15,13 @@ export default function AdminMaterials() {
     type: 'textbook',
     subject: 'Tamil',
     class: '10th',
+    stream: '',
     file_url: '',
   });
   const [saving, setSaving] = useState(false);
+  const [fClass, setFClass] = useState('');
+  const [fStream, setFStream] = useState('');
+  const [fSubject, setFSubject] = useState('');
 
   async function load() {
     setLoading(true);
@@ -29,6 +33,13 @@ export default function AdminMaterials() {
     load();
   }, []);
 
+  const filtered = items.filter((m) => {
+    if (fClass && m.class !== fClass) return false;
+    if (fStream && m.stream !== fStream) return false;
+    if (fSubject && m.subject !== fSubject) return false;
+    return true;
+  });
+
   async function del(m: StudyMaterial) {
     if (!confirm(`Delete "${m.title}"?`)) return;
     await supabase.from('study_materials').delete().eq('id', m.id);
@@ -37,7 +48,14 @@ export default function AdminMaterials() {
   async function save() {
     if (!form.title || !form.file_url) return;
     setSaving(true);
-    await supabase.from('study_materials').insert(form);
+    await supabase.from('study_materials').insert({
+      title: form.title,
+      type: form.type,
+      subject: form.subject,
+      class: form.class,
+      stream: (form.class === '11th' || form.class === '12th') && form.stream ? form.stream : null,
+      file_url: form.file_url,
+    });
     setSaving(false);
     setShowForm(false);
     setForm({ ...form, title: '', file_url: '' });
@@ -54,23 +72,44 @@ export default function AdminMaterials() {
         </button>
       </div>
 
+      <div className="card p-3 grid grid-cols-3 gap-3">
+        <select className="input" value={fClass} onChange={(e) => setFClass(e.target.value)}>
+          <option value="">All Classes</option>
+          {CLASSES.map((c) => (
+            <option key={c}>{c}</option>
+          ))}
+        </select>
+        <select className="input" value={fStream} onChange={(e) => setFStream(e.target.value)}>
+          <option value="">All Streams</option>
+          {STREAMS.map((s) => (
+            <option key={s}>{s}</option>
+          ))}
+        </select>
+        <select className="input" value={fSubject} onChange={(e) => setFSubject(e.target.value)}>
+          <option value="">All Subjects</option>
+          {ALL_SUBJECTS.map((s) => (
+            <option key={s}>{s}</option>
+          ))}
+        </select>
+      </div>
+
       {loading ? (
         <div className="card p-8 text-center text-slate-500">
           <Loader2 size={20} className="animate-spin inline mr-2" /> Loading...
         </div>
-      ) : items.length === 0 ? (
+      ) : filtered.length === 0 ? (
         <div className="card p-8 text-center text-slate-500 flex items-center justify-center gap-2">
-          <BookMarked size={18} /> No materials.
+          <BookMarked size={18} /> No materials found.
         </div>
       ) : (
         <div className="grid sm:grid-cols-2 gap-3">
-          {items.map((m) => (
+          {filtered.map((m) => (
             <div key={m.id} className="card p-3 flex items-center gap-3">
               <BookMarked size={20} className="text-cyan-600" />
               <div className="flex-1 min-w-0">
                 <div className="font-semibold text-sm truncate">{m.title}</div>
                 <div className="text-xs text-slate-400">
-                  {m.type} · {m.subject} · {m.class}
+                  {m.type} · {m.subject} · {m.class || 'All'}{m.stream ? ` · ${m.stream}` : ''}
                 </div>
               </div>
               <a href={m.file_url} target="_blank" rel="noreferrer" className="btn-ghost !p-2">
@@ -109,13 +148,24 @@ export default function AdminMaterials() {
                 </div>
                 <div>
                   <label className="label">Class</label>
-                  <select className="input" value={form.class} onChange={(e) => setForm({ ...form, class: e.target.value })}>
+                  <select className="input" value={form.class} onChange={(e) => setForm({ ...form, class: e.target.value, stream: '' })}>
                     {CLASSES.map((c) => (
                       <option key={c}>{c}</option>
                     ))}
                   </select>
                 </div>
               </div>
+              {(form.class === '11th' || form.class === '12th') && (
+                <div>
+                  <label className="label">Stream (optional)</label>
+                  <select className="input" value={form.stream} onChange={(e) => setForm({ ...form, stream: e.target.value })}>
+                    <option value="">All Streams</option>
+                    {STREAMS.map((s) => (
+                      <option key={s}>{s}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div>
                 <label className="label">Subject</label>
                 <select className="input" value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })}>
@@ -133,9 +183,7 @@ export default function AdminMaterials() {
               <button onClick={save} className="btn-primary flex-1" disabled={saving}>
                 {saving ? <Loader2 size={16} className="animate-spin" /> : 'Save'}
               </button>
-              <button onClick={() => setShowForm(false)} className="btn-ghost">
-                Cancel
-              </button>
+              <button onClick={() => setShowForm(false)} className="btn-ghost">Cancel</button>
             </div>
           </div>
         </div>
