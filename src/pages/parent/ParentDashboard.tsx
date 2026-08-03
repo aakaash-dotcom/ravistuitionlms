@@ -8,7 +8,7 @@ import { t } from '@/lib/i18n';
 import type { Banner, Student } from '@/lib/types';
 import ContactBox from '@/components/ContactBox';
 import BirthdayCard from '@/components/BirthdayCard';
-import { linkUserToNotification, promptNotificationPermission } from '@/lib/onesignal';
+import { linkUserToNotification, requestNotificationPermission, getNotificationPermission } from '@/lib/onesignal';
 import {
   CalendarCheck,
   BookOpen,
@@ -17,6 +17,7 @@ import {
   Wallet,
   ChevronDown,
   BellRing,
+  CheckCircle2,
 } from 'lucide-react';
 
 export default function ParentDashboard() {
@@ -29,6 +30,7 @@ export default function ParentDashboard() {
   const [banners, setBanners] = useState<Banner[]>([]);
   const [picker, setPicker] = useState(false);
   const [stats, setStats] = useState({ attendance: 0, diary: 0, tests: 0 });
+  const [notifEnabled, setNotifEnabled] = useState(false);
 
   useEffect(() => {
     if (ids.length === 0) return;
@@ -67,6 +69,15 @@ export default function ParentDashboard() {
       });
     })();
   }, [active]);
+
+  useEffect(() => {
+    setNotifEnabled(getNotificationPermission());
+  }, []);
+
+  async function enableAlerts() {
+    const granted = await requestNotificationPermission();
+    setNotifEnabled(granted);
+  }
 
   const navItems = [
     { to: '/parent/attendance', label: t(lang, 'attendance'), icon: CalendarCheck, color: 'bg-green-500' },
@@ -180,10 +191,11 @@ export default function ParentDashboard() {
 
       {/* Enable push alerts */}
       <button
-        onClick={() => promptNotificationPermission()}
-        className="btn-primary w-full"
+        onClick={notifEnabled ? undefined : enableAlerts}
+        disabled={notifEnabled}
+        className={notifEnabled ? 'btn-primary w-full !bg-green-600' : 'btn-primary w-full'}
       >
-        <BellRing size={16} /> {t(lang, 'enableAlerts')}
+        {notifEnabled ? <><CheckCircle2 size={16} /> {t(lang, 'alertsEnabled')}</> : <><BellRing size={16} /> {t(lang, 'enableAlerts')}</>}
       </button>
     </div>
   );

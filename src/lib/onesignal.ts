@@ -4,7 +4,11 @@ let initialized = false;
 
 export async function initOneSignal() {
   const appId = import.meta.env.VITE_ONESIGNAL_APP_ID;
-  if (!appId || initialized) return;
+  if (!appId || appId.trim() === '') {
+    console.warn('OneSignal: VITE_ONESIGNAL_APP_ID is not set in .env');
+    return;
+  }
+  if (initialized) return;
   initialized = true;
   try {
     await OneSignal.init({
@@ -13,7 +17,6 @@ export async function initOneSignal() {
       notifyButton: {
         enable: true,
         position: 'bottom-right',
-        displayPredicate: () => true,
         prenotify: true,
         showCredit: false,
         text: {
@@ -35,21 +38,46 @@ export async function initOneSignal() {
     });
   } catch (e) {
     console.warn('OneSignal init error:', e);
+    initialized = false;
   }
 }
 
-export async function linkUserToNotification(id: string) {
+export async function requestNotificationPermission(): Promise<boolean> {
+  const appId = import.meta.env.VITE_ONESIGNAL_APP_ID;
+  if (!appId || appId.trim() === '') {
+    alert('Please add VITE_ONESIGNAL_APP_ID to your .env file or Vercel Environment Variables to enable push notifications.');
+    return false;
+  }
   try {
-    await OneSignal.login(id);
+    if (OneSignal.Notifications && OneSignal.Notifications.requestPermission) {
+      const permission = await OneSignal.Notifications.requestPermission();
+      return permission;
+    } else if (OneSignal.Slidedown && OneSignal.Slidedown.promptPush) {
+      await OneSignal.Slidedown.promptPush();
+      return true;
+    }
+  } catch (e) {
+    console.error('OneSignal permission request failed:', e);
+  }
+  return false;
+}
+
+export function getNotificationPermission(): boolean {
+  try {
+    return !!(OneSignal.Notifications && OneSignal.Notifications.permission);
+  } catch {
+    return false;
+  }
+}
+
+export async function linkUserToNotification(phoneOrRoll: string) {
+  try {
+    const appId = import.meta.env.VITE_ONESIGNAL_APP_ID;
+    if (!appId || !phoneOrRoll) return;
+    if (OneSignal.login) {
+      await OneSignal.login(phoneOrRoll);
+    }
   } catch (e) {
     console.warn('OneSignal login error:', e);
-  }
-}
-
-export async function promptNotificationPermission() {
-  try {
-    await OneSignal.Notifications.requestPermission();
-  } catch (e) {
-    console.warn('OneSignal permission error:', e);
   }
 }

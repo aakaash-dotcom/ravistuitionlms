@@ -2,13 +2,13 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useLang } from '@/components/LanguageProvider';
 import { t } from '@/lib/i18n';
-import type { AttendanceRow, DiaryEntry, Notice, Student } from '@/lib/types';
+import type { AttendanceRow, DiaryEntry, Notice, Student, TestReport, McqQuiz } from '@/lib/types';
 import { isTodayBirthday } from '@/components/BirthdayCard';
-import { Bell, X, BookOpen, CalendarCheck, Cake } from 'lucide-react';
+import { Bell, X, BookOpen, CalendarCheck, Cake, HelpCircle, BarChart3, FileText } from 'lucide-react';
 
 interface NotifItem {
   id: string;
-  type: 'birthday' | 'attendance' | 'diary' | 'notice';
+  type: 'birthday' | 'attendance' | 'diary' | 'notice' | 'mcq' | 'test';
   title: string;
   subtitle: string;
   timestamp: string;
@@ -16,7 +16,7 @@ interface NotifItem {
   color: string;
 }
 
-const READ_KEY = 'rtc_notif_read_ts';
+const READ_KEY = 'rtc_last_read_time';
 
 export default function NotificationCenter({ studentIds }: { studentIds: string[] }) {
   const { lang } = useLang();
@@ -35,6 +35,7 @@ export default function NotificationCenter({ studentIds }: { studentIds: string[
       const list: NotifItem[] = [];
 
       for (const student of students) {
+        // Birthday
         if (isTodayBirthday(student.dob)) {
           list.push({
             id: `birthday-${student.id}`,
@@ -47,18 +48,20 @@ export default function NotificationCenter({ studentIds }: { studentIds: string[
           });
         }
 
-        const [attRes, diaryRes] = await Promise.all([
-          supabase.from('attendance').select('*').eq('student_id', student.id).order('date', { ascending: false }).limit(1),
-          supabase.from('diary_entries').select('*').eq('student_id', student.id).order('entry_date', { ascending: false }).limit(3),
-        ]);
-
-        const att = (attRes.data as AttendanceRow[]) || [];
+        // Attendance (latest)
+        const { data: attData } = await supabase
+          .from('attendance')
+          .select('*')
+          .eq('student_id', student.id)
+          .order('date', { ascending: false })
+          .limit(1);
+        const att = (attData as AttendanceRow[]) || [];
         if (att.length > 0) {
           const a = att[0];
           list.push({
             id: `att-${a.id}`,
             type: 'attendance',
-            title: `${student.name}: ${t(lang, 'attendanceUpdate')}`,
+            title: `${student.name}: ${t(lang, 'attendanceAlert')}`,
             subtitle: `${a.status} · ${a.session || 'Morning'} · ${a.date}`,
             timestamp: a.date,
             icon: CalendarCheck,
@@ -66,8 +69,15 @@ export default function NotificationCenter({ studentIds }: { studentIds: string[
           });
         }
 
+        // Diary / Homework (last 48h)
+        const { data: diaryData } = await supabase
+          .from('diary_entries')
+          .select('*')
+          .eq('student_id', student.id)
+          .order('entry_date', { ascending: false })
+          .limit(3);
+        const diary = (diaryData as DiaryEntry[]) || [];
         const now = Date.now();
-        const diary = (diaryRes.data as DiaryEntry[]) || [];
         diary.forEach((d) => {
           const ts = new Date(d.entry_date).getTime();
           if (now - ts < 48 * 60 * 60 * 1000) {
@@ -82,19 +92,71 @@ export default function NotificationCenter({ studentIds }: { studentIds: string[
             });
           }
         });
+
+        // Weekly & Monthly test marks (latest)
+        const { data: testData } = await supabase
+          .from('test_reports')
+          .select('*')
+          .eq('student_id', student.id)
+          .order('test_date', { ascending: false })
+          .limit(2);
+        const tests = (testData as TestReport[]) || [];
+        tests.forEach((tr) => {
+          list.push({
+            id: `test-${tr.id}`,
+            type: 'test',
+            title: `${student.name}: ${t(lang, 'weeklyMonthlyAlert')}`,
+            subtitle: `${tr.subject}: ${tr.marks}/${tr.out_of} (${tr.test_type})`,
+            timestamp: tr.test_date,
+            icon: BarChart3,
+            color: 'bg-purple-100 text-purple-600',
+          });
+        });
+
+        // Daily MCQ quizzes for their class
+        const { data: quizData } = await supabase
+          .from('mcq_quizzes')
+          .select('*')
+          .eq('active', true)
+          .eq('class', student.class)
+          .order('created_at', { ascending: false })
+          .limit(1);
+        const quizzes = (quizData as McqQuiz[]) || [];
+        if (quizzes.length > 0) {
+          const q = quizzes[0];
+          if (student.stream && q.stream && q.stream !== student.stream) {
+            // skip — stream mismatch
+          } else {
+            list.push({
+              id: `mcq-${q.id}`,
+              type: 'mcq',
+              title: `${student.name}: ${t(lang, 'dailyMcqAlert')}`,
+              subtitle: q.title,
+              timestamp: q.created_at || new Date().toISOString(),
+              icon: HelpCircle,
+              color: 'bg-cyan-100 text-cyan-600',
+            });
+          }
+        }
       }
 
-      const { data: noticeData } = await supabase.from('notices').select('*').eq('active', true).order('created_at', { ascending: false }).limit(1);
+      // Centre notices (latest active)
+      const { data: noticeData } = await supabase
+        .from('notices')
+        .select('*')
+        .eq('active', true)
+        .order('created_at', { ascending: false })
+        .limit(1);
       const notices = (noticeData as Notice[]) || [];
       if (notices.length > 0) {
         const n = notices[0];
         list.push({
           id: `notice-${n.id}`,
           type: 'notice',
-          title: n.title,
-          subtitle: n.content,
+          title: t(lang, 'noticeAlert'),
+          subtitle: n.title,
           timestamp: n.created_at || new Date().toISOString(),
-          icon: Bell,
+          icon: FileText,
           color: 'bg-rose-100 text-rose-600',
         });
       }
@@ -141,8 +203,8 @@ export default function NotificationCenter({ studentIds }: { studentIds: string[
               </h3>
               <div className="flex items-center gap-2">
                 {unreadCount > 0 && (
-                  <button onClick={markAllRead} className="text-xs text-blue-600 flex items-center gap-1">
-                    Mark all as read
+                  <button onClick={markAllRead} className="text-xs text-blue-600">
+                    {t(lang, 'markAsRead')}
                   </button>
                 )}
                 <button onClick={() => setOpen(false)} className="text-slate-400">

@@ -6,7 +6,7 @@ import BackBar from '@/components/BackBar';
 import type { Banner, DailyTest, DiaryEntry, McqQuiz, StudyMaterial, Student } from '@/lib/types';
 import ContactBox from '@/components/ContactBox';
 import BirthdayCard from '@/components/BirthdayCard';
-import { linkUserToNotification, promptNotificationPermission } from '@/lib/onesignal';
+import { linkUserToNotification, requestNotificationPermission, getNotificationPermission } from '@/lib/onesignal';
 import { useLang } from '@/components/LanguageProvider';
 import { t } from '@/lib/i18n';
 import {
@@ -18,6 +18,7 @@ import {
   Bell,
   ChevronRight,
   BellRing,
+  CheckCircle2,
 } from 'lucide-react';
 
 export default function StudentDashboard() {
@@ -31,6 +32,7 @@ export default function StudentDashboard() {
   const [recentDiary, setRecentDiary] = useState<DiaryEntry[]>([]);
   const [recentTests, setRecentTests] = useState<DailyTest[]>([]);
   const [materials, setMaterials] = useState<StudyMaterial[]>([]);
+  const [notifEnabled, setNotifEnabled] = useState(false);
 
   useEffect(() => {
     if (!sid) return;
@@ -95,6 +97,15 @@ export default function StudentDashboard() {
     { to: '/student/attendance', label: 'Attendance', icon: CalendarCheck, color: 'bg-green-500' },
     { to: '/student/materials', label: 'Materials', icon: BookMarked, color: 'bg-cyan-500' },
   ];
+
+  useEffect(() => {
+    setNotifEnabled(getNotificationPermission());
+  }, []);
+
+  async function enableAlerts() {
+    const granted = await requestNotificationPermission();
+    setNotifEnabled(granted);
+  }
 
   return (
     <div className="space-y-5">
@@ -225,10 +236,11 @@ export default function StudentDashboard() {
 
       {/* Enable push alerts */}
       <button
-        onClick={() => promptNotificationPermission()}
-        className="btn-primary w-full"
+        onClick={notifEnabled ? undefined : enableAlerts}
+        disabled={notifEnabled}
+        className={notifEnabled ? 'btn-primary w-full !bg-green-600' : 'btn-primary w-full'}
       >
-        <BellRing size={16} /> {t(lang, 'enableAlerts')}
+        {notifEnabled ? <><CheckCircle2 size={16} /> {t(lang, 'alertsEnabled')}</> : <><BellRing size={16} /> {t(lang, 'enableAlerts')}</>}
       </button>
     </div>
   );

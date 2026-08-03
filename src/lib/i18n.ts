@@ -75,7 +75,12 @@ export const translations = {
     attendanceUpdate: 'வருகை பதிவு புதுப்பிப்பு',
     newHomework: 'புதிய வீட்டுப்பாடம்',
     enableAlerts: 'ஃபோன் லாக்-ஸ்கிரீன் அறிவிப்புகளை இயக்கவும்',
+    alertsEnabled: 'லாக்-ஸ்கிரீன் அறிவிப்புகள் இயலும்',
     noNotifications: 'புதிய அறிவிப்புகள் இல்லை',
+    attendanceAlert: 'வருகை பதிவு',
+    dailyMcqAlert: 'தினசரி MCQ',
+    weeklyMonthlyAlert: 'வாராந்திர / மாதாந்திர தேர்வு',
+    noticeAlert: 'முக்கிய அறிவிப்பு',
   },
   en: {
     parentPortal: 'Parent Portal',
@@ -151,7 +156,12 @@ export const translations = {
     attendanceUpdate: 'Attendance Update',
     newHomework: 'New Homework',
     enableAlerts: 'Enable Phone Lock-Screen Alerts',
+    alertsEnabled: 'Lock-Screen Alerts Enabled',
     noNotifications: 'No new notifications',
+    attendanceAlert: 'Attendance Alert',
+    dailyMcqAlert: 'Daily MCQ',
+    weeklyMonthlyAlert: 'Weekly / Monthly Test',
+    noticeAlert: 'Important Notice',
   },
 } as const;
 
