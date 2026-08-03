@@ -1,4 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect } from 'react';
+import { initOneSignal } from '@/lib/onesignal';
 import LoginPage from '@/pages/LoginPage';
 import AdminLayout from '@/pages/admin/AdminLayout';
 import AdminDashboard from '@/pages/admin/AdminDashboard';
@@ -37,6 +39,9 @@ import TeacherNotices from '@/pages/teacher/TeacherNotices';
 import TeacherPlanner from '@/pages/teacher/TeacherPlanner';
 
 export default function App() {
+  useEffect(() => {
+    initOneSignal();
+  }, []);
   return (
     <BrowserRouter>
       <Routes>

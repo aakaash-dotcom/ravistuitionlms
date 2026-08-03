@@ -3,8 +3,12 @@ import { Link } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { useSession } from '@/lib/useSession';
 import BackBar from '@/components/BackBar';
-import type { Banner, DailyTest, DiaryEntry, McqQuiz, StudyMaterial } from '@/lib/types';
+import type { Banner, DailyTest, DiaryEntry, McqQuiz, StudyMaterial, Student } from '@/lib/types';
 import ContactBox from '@/components/ContactBox';
+import BirthdayCard from '@/components/BirthdayCard';
+import { linkUserToNotification, promptNotificationPermission } from '@/lib/onesignal';
+import { useLang } from '@/components/LanguageProvider';
+import { t } from '@/lib/i18n';
 import {
   HelpCircle,
   BookOpen,
@@ -13,13 +17,14 @@ import {
   BarChart3,
   Bell,
   ChevronRight,
-  Image as ImageIcon,
+  BellRing,
 } from 'lucide-react';
 
 export default function StudentDashboard() {
   const s = useSession();
+  const { lang } = useLang();
   const sid = s?.studentId;
-  const [student, setStudent] = useState<{ name: string; class: string; stream: string | null; roll_no: string } | null>(null);
+  const [student, setStudent] = useState<Student | null>(null);
   const [quizzes, setQuizzes] = useState<McqQuiz[]>([]);
   const [banners, setBanners] = useState<Banner[]>([]);
   const [stats, setStats] = useState({ tests: 0, diary: 0, attendance: 0 });
@@ -32,7 +37,7 @@ export default function StudentDashboard() {
     (async () => {
       const { data: stu } = await supabase.from('students').select('*').eq('id', sid).maybeSingle();
       if (stu) {
-        const st = stu as { name: string; class: string; stream: string | null; roll_no: string };
+        const st = stu as Student;
         setStudent(st);
         const { data: qs } = await supabase
           .from('mcq_quizzes')
@@ -49,6 +54,9 @@ export default function StudentDashboard() {
           .order('created_at', { ascending: false })
           .limit(3);
         setMaterials((ms as StudyMaterial[]) || []);
+        if (st.roll_no) {
+          linkUserToNotification(st.roll_no);
+        }
       }
       const { data: bs } = await supabase
         .from('banners')
@@ -90,6 +98,9 @@ export default function StudentDashboard() {
 
   return (
     <div className="space-y-5">
+      {/* Birthday card */}
+      {student && <BirthdayCard student={student} />}
+
       {banners.length > 0 && (
         <div className="rounded-xl overflow-hidden shadow-sm">
           <img src={banners[0].image_url} alt={banners[0].title} className="w-full h-auto object-contain" />
@@ -211,6 +222,14 @@ export default function StudentDashboard() {
       )}
 
       <ContactBox />
+
+      {/* Enable push alerts */}
+      <button
+        onClick={() => promptNotificationPermission()}
+        className="btn-primary w-full"
+      >
+        <BellRing size={16} /> {t(lang, 'enableAlerts')}
+      </button>
     </div>
   );
 }

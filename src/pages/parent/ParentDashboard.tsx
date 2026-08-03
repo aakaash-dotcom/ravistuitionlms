@@ -7,6 +7,8 @@ import { useLang } from '@/components/LanguageProvider';
 import { t } from '@/lib/i18n';
 import type { Banner, Student } from '@/lib/types';
 import ContactBox from '@/components/ContactBox';
+import BirthdayCard from '@/components/BirthdayCard';
+import { linkUserToNotification, promptNotificationPermission } from '@/lib/onesignal';
 import {
   CalendarCheck,
   BookOpen,
@@ -14,7 +16,7 @@ import {
   Bell,
   Wallet,
   ChevronDown,
-  Image as ImageIcon,
+  BellRing,
 } from 'lucide-react';
 
 export default function ParentDashboard() {
@@ -41,6 +43,10 @@ export default function ParentDashboard() {
         .eq('active', true)
         .in('audience', ['Everyone', 'Parents Only']);
       setBanners((bs as Banner[]) || []);
+      // link parent phone to OneSignal
+      if (list.length > 0 && list[0].parent_phone) {
+        linkUserToNotification(list[0].parent_phone);
+      }
     })();
   }, [ids]);
 
@@ -72,6 +78,9 @@ export default function ParentDashboard() {
 
   return (
     <div className="space-y-5">
+      {/* Birthday card */}
+      {active && <BirthdayCard student={active} />}
+
       {/* Banner */}
       {banners.length > 0 && (
         <div className="rounded-xl overflow-hidden shadow-sm">
@@ -168,6 +177,14 @@ export default function ParentDashboard() {
       </div>
 
       <ContactBox />
+
+      {/* Enable push alerts */}
+      <button
+        onClick={() => promptNotificationPermission()}
+        className="btn-primary w-full"
+      >
+        <BellRing size={16} /> {t(lang, 'enableAlerts')}
+      </button>
     </div>
   );
 }

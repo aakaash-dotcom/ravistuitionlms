@@ -37,6 +37,7 @@ const empty: Omit<Student, 'id' | 'created_at'> = {
   total_fee: 0,
   fee_paid: 0,
   status: 'Active',
+  dob: null,
 };
 
 export default function AdminStudents() {
@@ -302,6 +303,10 @@ export default function AdminStudents() {
               <div>
                 <label className="label">Student Phone</label>
                 <input className="input" value={form.phone || ''} onChange={(e) => set('phone', e.target.value)} />
+              </div>
+              <div>
+                <label className="label">Date of Birth</label>
+                <input type="date" className="input" value={form.dob || ''} onChange={(e) => set('dob', e.target.value || null)} />
               </div>
               <div>
                 <label className="label">Status</label>

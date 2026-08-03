@@ -15,6 +15,7 @@ export interface Student {
   total_fee: number;
   fee_paid: number;
   status: string;
+  dob?: string | null;
   created_at?: string;
 }
 

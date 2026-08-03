@@ -4,6 +4,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { LanguageProvider, useLang } from '@/components/LanguageProvider';
 import LanguageToggle from '@/components/LanguageToggle';
+import NotificationCenter from '@/components/NotificationCenter';
 import { clearSession, getSession } from '@/lib/auth';
 import { BRAND } from '@/lib/brand';
 
@@ -26,7 +27,12 @@ function ParentShell() {
         title={`${BRAND.name}`}
         subtitle="Parent Portal"
         onLogout={logout}
-        right={<LanguageToggle />}
+        right={
+          <div className="flex items-center gap-2">
+            <NotificationCenter studentIds={s?.studentIds || []} />
+            <LanguageToggle />
+          </div>
+        }
       />
       <main className="flex-1 max-w-5xl w-full mx-auto px-4 py-5">
         <Outlet />
