@@ -59,34 +59,23 @@ export async function sendPushAlert(
   message: string,
   targetIds?: string[],
 ) {
-  const appId = import.meta.env.VITE_ONESIGNAL_APP_ID || 'YOUR_ONESIGNAL_APP_ID';
-  const restApiKey = import.meta.env.VITE_ONESIGNAL_REST_API_KEY;
-  if (!appId || appId === 'YOUR_ONESIGNAL_APP_ID' || !restApiKey) {
-    console.warn('OneSignal REST API key missing. Push notification skipped.');
-    return;
-  }
   try {
-    const body: Record<string, unknown> = {
-      app_id: appId,
-      headings: { en: title },
-      contents: { en: message },
-    };
-    if (targetIds && targetIds.length > 0) {
-      body.include_aliases = { external_id: targetIds };
-      body.target_channel = 'push';
-    } else {
-      body.included_segments = ['Subscribed Users'];
-    }
-    await fetch('https://onesignal.com/api/v1/notifications', {
+    const res = await fetch('/api/push', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Basic ${restApiKey}`,
-      },
-      body: JSON.stringify(body),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title, message, targetIds }),
     });
+
+    const json = await res.json();
+    console.log('OneSignal push response:', res.status, json);
+
+    if (!res.ok) {
+      console.warn('Push alert warning:', json);
+    } else if (json.recipients === 0) {
+      console.warn('Push accepted by OneSignal, but matched 0 recipients.');
+    }
   } catch (e) {
-    console.error('Error sending push alert:', e);
+    console.error('Error sending push alert via /api/push:', e);
   }
 }
 
