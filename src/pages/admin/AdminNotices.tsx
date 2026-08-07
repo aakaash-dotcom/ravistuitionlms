@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { Notice } from '@/lib/types';
 import BackBar from '@/components/BackBar';
+import { sendPushAlert } from '@/lib/onesignal';
 import { Plus, Trash2, X, Loader2, Bell, FileText, Image as ImageIcon } from 'lucide-react';
 
 export default function AdminNotices() {
@@ -39,6 +40,10 @@ export default function AdminNotices() {
       file_url: form.file_url || null,
       active: true,
     });
+    await sendPushAlert(
+      "Ravi's Tuition Centre · Important Notice",
+      `New Notice Published: ${form.title}`,
+    );
     setSaving(false);
     setShowForm(false);
     setForm({ title: '', content: '', file_url: '', image_url: '' });

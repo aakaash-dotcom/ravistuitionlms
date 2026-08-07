@@ -4,6 +4,7 @@ import { CLASSES } from '@/lib/brand';
 import { ALL_SUBJECTS, getSubjectsForClass } from '@/lib/subjects';
 import type { DiaryEntry, Student } from '@/lib/types';
 import BackBar from '@/components/BackBar';
+import { sendPushAlert } from '@/lib/onesignal';
 import { Plus, Check, X, Loader2, BookOpen, Search, Trash2 } from 'lucide-react';
 
 interface EntryRow {
@@ -92,6 +93,14 @@ export default function AdminDiary() {
       status: 'Approved',
     }));
     await supabase.from('diary_entries').insert(inserts);
+    const targetPhones: string[] = [];
+    if (selectedStudent.parent_phone) targetPhones.push(selectedStudent.parent_phone);
+    if (selectedStudent.roll_no) targetPhones.push(selectedStudent.roll_no);
+    await sendPushAlert(
+      "Ravi's Tuition Centre · Homework Diary",
+      `New homework/study diary added: ${valid.map((r) => `${r.subject}: ${r.topic}`).join(', ')}`,
+      targetPhones.length > 0 ? targetPhones : undefined,
+    );
     setSaving(false);
     setShowAdd(false);
     setSelectedStudent(null);

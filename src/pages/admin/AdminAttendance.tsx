@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { CLASSES, STREAMS } from '@/lib/brand';
 import type { Student, AttendanceRow } from '@/lib/types';
 import BackBar from '@/components/BackBar';
+import { sendPushAlert } from '@/lib/onesignal';
 import { Loader2, Save, Sun, Moon } from 'lucide-react';
 
 export default function AdminAttendance() {
@@ -54,6 +55,10 @@ export default function AdminAttendance() {
     }));
     await supabase.from('attendance').delete().in('student_id', students.map((s) => s.id)).eq('date', date).eq('session', session);
     await supabase.from('attendance').insert(rows);
+    await sendPushAlert(
+      "Ravi's Tuition Centre · Attendance",
+      `Attendance marked for ${date} (${session} Session). Open app to check status.`,
+    );
     setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);

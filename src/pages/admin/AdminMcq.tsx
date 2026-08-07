@@ -4,6 +4,7 @@ import { CLASSES, STREAMS } from '@/lib/brand';
 import { getSubjectsForClass } from '@/lib/subjects';
 import type { McqQuestion, McqQuiz } from '@/lib/types';
 import BackBar from '@/components/BackBar';
+import { sendPushAlert } from '@/lib/onesignal';
 import { Plus, Trash2, X, Loader2, HelpCircle, Save, ClipboardPaste } from 'lucide-react';
 
 interface QForm {
@@ -141,6 +142,10 @@ export default function AdminMcq() {
     if (quiz) {
       const rows = validQs.map((q) => ({ ...q, quiz_id: (quiz as McqQuiz).id, marks: Number(q.marks) }));
       await supabase.from('mcq_questions').insert(rows);
+      await sendPushAlert(
+        "Ravi's Tuition Centre · Daily MCQ",
+        `New practice quiz available for ${form.class} (${form.subject}). Test your knowledge now!`,
+      );
     }
     setSaving(false);
     setShowForm(false);
