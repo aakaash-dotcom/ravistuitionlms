@@ -76,13 +76,16 @@ export interface DailyTest {
 export interface McqQuiz {
   id: string;
   title: string;
+  title_ta?: string | null;
   topic: string | null;
+  topic_ta?: string | null;
   subject: string;
   class: string;
   stream: string | null;
   total_marks: number;
   duration: number;
   active: boolean;
+  is_pyq?: boolean;
   created_at?: string;
 }
 
@@ -90,10 +93,15 @@ export interface McqQuestion {
   id: string;
   quiz_id: string;
   question_text: string;
+  question_text_ta?: string | null;
   option_a: string;
+  option_a_ta?: string | null;
   option_b: string;
+  option_b_ta?: string | null;
   option_c: string;
+  option_c_ta?: string | null;
   option_d: string;
+  option_d_ta?: string | null;
   answer: string;
   marks: number;
 }
@@ -105,6 +113,8 @@ export interface DiaryEntry {
   topic: string;
   entry_date: string;
   status: string;
+  parent_verified?: boolean;
+  parent_verified_at?: string | null;
   created_at?: string;
 }
 
@@ -124,7 +134,12 @@ export interface StudyMaterial {
   subject: string | null;
   class: string | null;
   stream: string | null;
-  file_url: string;
+  chapter?: string | null;
+  part?: string | null;
+  file_url: string | null;
+  video_url?: string | null;
+  ppt_url?: string | null;
+  is_pyq?: boolean;
   created_at?: string;
 }
 
@@ -135,6 +150,14 @@ export interface Banner {
   link_url: string | null;
   audience: string;
   active: boolean;
+  created_at?: string;
+}
+
+export interface MaterialProgress {
+  id: string;
+  student_id: string;
+  material_id: string;
+  revised: boolean;
   created_at?: string;
 }
 

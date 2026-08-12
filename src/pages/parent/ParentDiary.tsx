@@ -5,7 +5,7 @@ import BackBar from '@/components/BackBar';
 import { useLang } from '@/components/LanguageProvider';
 import { t } from '@/lib/i18n';
 import type { DiaryEntry, Student } from '@/lib/types';
-import { Loader2, BookOpen } from 'lucide-react';
+import { Loader2, BookOpen, CheckCircle2, PenLine } from 'lucide-react';
 
 export default function ParentDiary() {
   const { lang } = useLang();
@@ -15,6 +15,7 @@ export default function ParentDiary() {
   const [active, setActive] = useState<Student | null>(null);
   const [rows, setRows] = useState<DiaryEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [verifying, setVerifying] = useState<string | null>(null);
 
   useEffect(() => {
     if (ids.length === 0) return;
@@ -26,19 +27,38 @@ export default function ParentDiary() {
     })();
   }, [ids]);
 
+  async function loadEntries(studentId: string) {
+    setLoading(true);
+    const { data } = await supabase
+      .from('diary_entries')
+      .select('*')
+      .eq('student_id', studentId)
+      .order('entry_date', { ascending: false });
+    setRows((data as DiaryEntry[]) || []);
+    setLoading(false);
+  }
+
   useEffect(() => {
     if (!active) return;
-    (async () => {
-      setLoading(true);
-      const { data } = await supabase
-        .from('diary_entries')
-        .select('*')
-        .eq('student_id', active.id)
-        .order('entry_date', { ascending: false });
-      setRows((data as DiaryEntry[]) || []);
-      setLoading(false);
-    })();
+    loadEntries(active.id);
   }, [active]);
+
+  const today = new Date().toISOString().slice(0, 10);
+
+  async function verifyEntry(e: DiaryEntry) {
+    setVerifying(e.id);
+    const now = new Date().toISOString();
+    await supabase
+      .from('diary_entries')
+      .update({ parent_verified: true, parent_verified_at: now })
+      .eq('id', e.id);
+    setRows((prev) =>
+      prev.map((r) =>
+        r.id === e.id ? { ...r, parent_verified: true, parent_verified_at: now } : r,
+      ),
+    );
+    setVerifying(null);
+  }
 
   if (!active) return <div className="card p-8 text-center text-slate-500">{t(lang, 'loading')}</div>;
 
@@ -71,26 +91,57 @@ export default function ParentDiary() {
         </div>
       ) : (
         <div className="space-y-2">
-          {rows.map((e) => (
-            <div key={e.id} className="card p-3">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="badge bg-blue-100 text-blue-700">{e.subject}</span>
-                <span
-                  className={`badge ${
-                    e.status === 'Approved'
-                      ? 'bg-green-100 text-green-700'
-                      : e.status === 'Pending'
-                        ? 'bg-amber-100 text-amber-700'
-                        : 'bg-red-100 text-red-700'
-                  }`}
-                >
-                  {e.status}
-                </span>
+          {rows.map((e) => {
+            const isToday = e.entry_date === today;
+            const verified = e.parent_verified === true;
+            const verifiedTime = e.parent_verified_at
+              ? new Date(e.parent_verified_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              : '';
+            return (
+              <div key={e.id} className="card p-3">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="badge bg-blue-100 text-blue-700">{e.subject}</span>
+                  <span
+                    className={`badge ${
+                      e.status === 'Approved'
+                        ? 'bg-green-100 text-green-700'
+                        : e.status === 'Pending'
+                          ? 'bg-amber-100 text-amber-700'
+                          : 'bg-red-100 text-red-700'
+                    }`}
+                  >
+                    {e.status}
+                  </span>
+                  {isToday && (
+                    <span className="badge bg-indigo-100 text-indigo-700">Today</span>
+                  )}
+                </div>
+                <div className="font-semibold text-sm">{e.topic}</div>
+                <div className="text-xs text-slate-400">{e.entry_date}</div>
+
+                {isToday && !verified && (
+                  <button
+                    onClick={() => verifyEntry(e)}
+                    disabled={verifying === e.id}
+                    className="mt-2 w-full flex items-center justify-center gap-2 rounded-lg border-2 border-blue-500 text-blue-600 font-semibold text-sm py-2 hover:bg-blue-50 transition disabled:opacity-50"
+                  >
+                    {verifying === e.id ? (
+                      <Loader2 size={14} className="animate-spin" />
+                    ) : (
+                      <PenLine size={14} />
+                    )}
+                    Click to Sign & Verify Today's Homework
+                  </button>
+                )}
+                {verified && (
+                  <div className="mt-2 flex items-center gap-2 text-sm font-semibold text-green-600">
+                    <CheckCircle2 size={16} />
+                    Verified by Parent at {verifiedTime}
+                  </div>
+                )}
               </div>
-              <div className="font-semibold text-sm">{e.topic}</div>
-              <div className="text-xs text-slate-400">{e.entry_date}</div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

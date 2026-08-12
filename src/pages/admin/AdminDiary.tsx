@@ -5,7 +5,14 @@ import { ALL_SUBJECTS, getSubjectsForClass } from '@/lib/subjects';
 import type { DiaryEntry, Student } from '@/lib/types';
 import BackBar from '@/components/BackBar';
 import { sendPushAlert } from '@/lib/onesignal';
-import { Plus, Check, X, Loader2, BookOpen, Search, Trash2 } from 'lucide-react';
+import { Plus, Check, X, Loader2, BookOpen, Search, Trash2, CheckCircle2, XCircle } from 'lucide-react';
+
+const PRESET_HOMEWORK = [
+  '📖 Read Ch ',
+  '📝 Complete Ch ',
+  '✍️ Complete Ex ',
+  '🔥 Test Revision for Saturday',
+];
 
 interface EntryRow {
   subject: string;
@@ -241,6 +248,19 @@ export default function AdminDiary() {
                       <button onClick={addRow} className="btn-ghost !py-1 text-xs">
                         <Plus size={12} /> Add subject
                       </button>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5 mb-2">
+                      <span className="text-[11px] text-slate-400 self-center mr-1">Presets:</span>
+                      {PRESET_HOMEWORK.map((p) => (
+                        <button
+                          key={p}
+                          type="button"
+                          onClick={() => setRow(rows.length - 1, { topic: rows[rows.length - 1].topic + p })}
+                          className="badge bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 text-xs"
+                        >
+                          {p}...
+                        </button>
+                      ))}
                     </div>
                     <div className="space-y-2">
                       {rows.map((r, i) => (
