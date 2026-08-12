@@ -174,6 +174,12 @@ export default function AdminDiary() {
               >
                 {e.status}
               </span>
+              <span
+                className={`badge ${e.parent_verified ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}
+                title={e.parent_verified ? 'Parent Verified' : 'Not Verified'}
+              >
+                {e.parent_verified ? <span className="flex items-center gap-1"><CheckCircle2 size={11} /> Verified</span> : <span className="flex items-center gap-1"><XCircle size={11} /> Not Verified</span>}
+              </span>
               <div className="flex gap-1">
                 <button onClick={() => setStatus(e, 'Approved')} className="btn-ghost !p-1.5" title="Approve">
                   <Check size={14} className="text-green-600" />

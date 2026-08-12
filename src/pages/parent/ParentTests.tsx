@@ -28,6 +28,7 @@ export default function ParentTests() {
   const [mode, setMode] = useState<Mode>('Weekly');
   const [subjectFilter, setSubjectFilter] = useState<string>('All');
   const [downloading, setDownloading] = useState<string | null>(null);
+  const [mcqSubjectFilter, setMcqSubjectFilter] = useState('All');
 
   useEffect(() => {
     if (ids.length === 0) return;

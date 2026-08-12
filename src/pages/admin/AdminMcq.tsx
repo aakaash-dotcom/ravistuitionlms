@@ -72,52 +72,86 @@ export default function AdminMcq() {
     setQuestions((qs) => qs.filter((_, idx) => idx !== i));
   }
 
-  function parseBulkPaste(text: string): QForm[] {
-    const lines = text.trim().split('\n').filter((l) => l.trim());
-    const result: QForm[] = [];
+  function applyBulk() {
+    const lines = bulkText.trim().split('\n').map(l => l.trim()).filter(Boolean);
+    const parsed: QForm[] = [];
     let skipped = 0;
+    let defaultMarksPerQ = 1;
+
+    const nextForm = { ...form };
+
     for (const line of lines) {
-      // try tab, then |, then comma
-      let parts = line.split('\t');
-      if (parts.length < 4) parts = line.split('|');
-      if (parts.length < 4) parts = line.split(',');
-      // Need at least: question, A, B, C, D, correct
+      if (line.startsWith('#') || line.startsWith('---') || line.startsWith('===')) {
+        if (line.toUpperCase().startsWith('#TITLE:')) {
+          nextForm.title = line.substring(7).trim();
+        } else if (line.toUpperCase().startsWith('#CLASS:')) {
+          const cls = line.substring(7).trim();
+          if (['8th', '9th', '10th', '11th', '12th'].includes(cls)) {
+            nextForm.class = cls;
+            if (['8th', '9th', '10th'].includes(cls)) {
+              nextForm.stream = '';
+            }
+          }
+        } else if (line.toUpperCase().startsWith('#SUBJECT:')) {
+          const sub = line.substring(9).trim();
+          if (['Tamil', 'English', 'Maths', 'Science', 'Social Science', 'Physics', 'Chemistry', 'Biology', 'Computer Science', 'Accountancy', 'Economics', 'Commerce', 'Computer Application', 'Business Maths'].includes(sub)) {
+            nextForm.subject = sub;
+          }
+        } else if (line.toUpperCase().startsWith('#STREAM:')) {
+          const str = line.substring(8).trim();
+          if (['11th', '12th'].includes(nextForm.class)) {
+            nextForm.stream = str;
+          } else {
+            nextForm.stream = '';
+          }
+        } else if (line.toUpperCase().startsWith('#TIME:')) {
+          const mins = parseInt(line.substring(6).trim(), 10);
+          if (!isNaN(mins) && mins > 0) nextForm.duration = mins;
+        } else if (line.toUpperCase().startsWith('#MARKS_PER_Q:')) {
+          const mpq = parseInt(line.substring(13).trim(), 10);
+          if (!isNaN(mpq) && mpq > 0) defaultMarksPerQ = mpq;
+        }
+        continue;
+      }
+
+      let parts = line.split('|');
+      if (parts.length < 4) parts = line.split('\t');
       if (parts.length < 6) {
         skipped++;
         continue;
       }
-      const [q, a, b, c, d, correct, marks] = parts.map((p) => p.trim());
+
+      const [q, a, b, c, d, correct, rowMarks] = parts.map(p => p.trim());
       const correctUpper = (correct || 'A').toUpperCase();
-      if (!['A', 'B', 'C', 'D'].includes(correctUpper)) {
+      if (!['A', 'B', 'C', 'D'].includes(correctUpper) || !q) {
         skipped++;
         continue;
       }
-      if (!q) {
-        skipped++;
-        continue;
-      }
-      result.push({
+
+      const marksVal = rowMarks ? Number(rowMarks) || defaultMarksPerQ : defaultMarksPerQ;
+
+      parsed.push({
         question_text: q,
         option_a: a || '',
         option_b: b || '',
         option_c: c || '',
         option_d: d || '',
         answer: correctUpper as 'A' | 'B' | 'C' | 'D',
-        marks: marks ? Number(marks) || 1 : 1,
+        marks: marksVal,
       });
     }
-    return result;
-  }
 
-  function applyBulk() {
-    const parsed = parseBulkPaste(bulkText);
     if (parsed.length === 0) {
-      setBulkResult({ added: 0, skipped: 0 });
+      setBulkResult({ added: 0, skipped });
       return;
     }
-    const skipped = (bulkText.trim().split('\n').filter((l) => l.trim())).length - parsed.length;
+
+    const totalQMarks = parsed.reduce((sum, q) => sum + (q.marks || 1), 0);
+    nextForm.total_marks = totalQMarks;
+
+    setForm(nextForm);
     setQuestions(parsed);
-    setBulkResult({ added: parsed.length, skipped: Math.max(0, skipped) });
+    setBulkResult({ added: parsed.length, skipped });
   }
 
   async function save() {
@@ -307,6 +341,7 @@ export default function AdminMcq() {
                   <p className="text-xs text-slate-500">
                     Format: Question | Option A | Option B | Option C | Option D | Correct (A/B/C/D) | Marks
                     <br />Tab-separated (paste directly from Excel), or use | or , as separators.
+                    <br /><strong>Optional headers (auto-fill form):</strong> #TITLE:, #CLASS:, #BOARD:, #STREAM:, #SUBJECT:, #TIME:, #MARKS_PER_Q:
                   </p>
                   <textarea
                     className="input min-h-[200px] font-mono text-xs"

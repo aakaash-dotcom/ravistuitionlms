@@ -3,7 +3,8 @@ import { supabase } from '@/lib/supabase';
 import { CLASSES, STREAMS } from '@/lib/brand';
 import type { Student, AttendanceRow } from '@/lib/types';
 import BackBar from '@/components/BackBar';
-import { Loader2, Save, Sun, Moon } from 'lucide-react';
+import { Loader2, Save, Sun, Moon, CheckCheck } from 'lucide-react';
+import { sendPushAlert } from '@/lib/onesignal';
 
 export default function TeacherAttendance() {
   const [students, setStudents] = useState<Student[]>([]);
@@ -45,6 +46,12 @@ export default function TeacherAttendance() {
     })();
   }, [fClass, fStream, date, session]);
 
+  function markAllPresent() {
+    const next: Record<string, string> = {};
+    students.forEach((s) => (next[s.id] = 'Present'));
+    setStatuses(next);
+  }
+
   async function save() {
     setSaving(true);
     const rows = students.map((s) => ({
@@ -56,6 +63,12 @@ export default function TeacherAttendance() {
     // delete existing for this date+session, then insert
     await supabase.from('attendance').delete().in('student_id', students.map((s) => s.id)).eq('date', date).eq('session', session);
     await supabase.from('attendance').insert(rows);
+    const parentPhones = students.filter((s) => s.parent_phone).map((s) => s.parent_phone!);
+    await sendPushAlert(
+      "Ravi's Tuition Centre · Attendance",
+      `Attendance marked for ${date} (${session} Session). Open app to check status.`,
+      parentPhones.length > 0 ? parentPhones : undefined,
+    );
     setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
@@ -131,6 +144,12 @@ export default function TeacherAttendance() {
             </div>
           ))}
         </div>
+      )}
+
+      {!loading && students.length > 0 && (
+        <button onClick={markAllPresent} className="btn-ghost !py-1.5 text-xs w-full">
+          <CheckCheck size={14} /> Mark All Present
+        </button>
       )}
 
       <button onClick={save} className="btn-primary w-full" disabled={saving}>

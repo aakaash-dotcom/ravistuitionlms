@@ -5,7 +5,8 @@ import { CLASSES, STREAMS } from '@/lib/brand';
 import { ALL_SUBJECTS, getSubjectsForClass } from '@/lib/subjects';
 import type { Student, TestReport } from '@/lib/types';
 import BackBar from '@/components/BackBar';
-import { Loader2, Save, Plus, X, Search } from 'lucide-react';
+import { Loader2, Save, Plus, X, Search, ClipboardPaste } from 'lucide-react';
+import { sendPushAlert } from '@/lib/onesignal';
 
 interface Cell {
   marks: string;
@@ -68,6 +69,9 @@ export default function TeacherMarks() {
     }));
   }
 
+  const [pasteOpen, setPasteOpen] = useState(false);
+  const [pasteText, setPasteText] = useState('');
+
   async function save() {
     setSaving(true);
     const rows: Omit<TestReport, 'id' | 'created_at'>[] = [];
@@ -91,10 +95,36 @@ export default function TeacherMarks() {
     });
     if (rows.length > 0) {
       await supabase.from('test_reports').insert(rows);
+      const parentPhones = students.filter((s) => s.parent_phone).map((s) => s.parent_phone!);
+      await sendPushAlert(
+        "Ravi's Tuition Centre · Test Marks Published",
+        `${testType} test marks for ${selectedSubjects.join(', ')} have been published. Open app to view.`,
+        parentPhones.length > 0 ? parentPhones : undefined,
+      );
     }
     setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
+  }
+
+  function applyPaste() {
+    const lines = pasteText.trim().split(/\r?\n/);
+    const g = { ...grid };
+    lines.forEach((line) => {
+      const cells = line.split(/\t|,/).map((c) => c.trim());
+      const rollNo = cells[0];
+      if (!rollNo) return;
+      const stu = students.find((s) => s.roll_no.toLowerCase() === rollNo.toLowerCase());
+      if (!stu) return;
+      g[stu.id] = selectedSubjects.map((_, i) => ({
+        marks: cells[i + 1] || '',
+        outOf,
+        remark: g[stu.id]?.[i]?.remark || '',
+      }));
+    });
+    setGrid(g);
+    setPasteText('');
+    setPasteOpen(false);
   }
 
   return (
@@ -196,6 +226,29 @@ export default function TeacherMarks() {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      <button onClick={() => setPasteOpen((v) => !v)} className="btn-ghost w-full">
+        <ClipboardPaste size={16} /> Bulk Paste Marks from Excel
+      </button>
+
+      {pasteOpen && (
+        <div className="card p-4 space-y-3 border-blue-300">
+          <h3 className="font-bold text-sm">Paste Marks from Excel</h3>
+          <p className="text-xs text-slate-500">
+            Format: RollNumber | Marks (one subject) or RollNumber | Marks1 | Marks2 (multiple subjects in order: {selectedSubjects.join(', ')})
+          </p>
+          <textarea
+            className="input min-h-[120px] font-mono"
+            placeholder={'26001\t88\n26002\t76\n26003\t92'}
+            value={pasteText}
+            onChange={(e) => setPasteText(e.target.value)}
+          />
+          <div className="flex gap-2">
+            <button onClick={applyPaste} className="btn-primary">Apply Paste</button>
+            <button onClick={() => setPasteOpen(false)} className="btn-ghost">Cancel</button>
+          </div>
         </div>
       )}
 

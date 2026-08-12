@@ -4,12 +4,20 @@ import { CLASSES, STREAMS } from '@/lib/brand';
 import { ALL_SUBJECTS, getSubjectsForClass } from '@/lib/subjects';
 import type { DiaryEntry, Student } from '@/lib/types';
 import BackBar from '@/components/BackBar';
-import { Plus, Check, X, Loader2, BookOpen, Search, Trash2 } from 'lucide-react';
+import { sendPushAlert } from '@/lib/onesignal';
+import { Plus, Check, X, Loader2, BookOpen, Search, Trash2, CheckCircle2, XCircle } from 'lucide-react';
 
 interface EntryRow {
   subject: string;
   topic: string;
 }
+
+const PRESET_HOMEWORK = [
+  '📖 Read Ch ',
+  '📝 Complete Ch MCQs ',
+  '✍️ Complete Ex ',
+  '🔥 Test Revision for Saturday',
+];
 
 export default function TeacherDiary() {
   const [entries, setEntries] = useState<(DiaryEntry & { student_name?: string })[]>([]);
@@ -29,7 +37,6 @@ export default function TeacherDiary() {
     let q = supabase.from('diary_entries').select('*, students(name)').order('entry_date', { ascending: false });
     const { data } = await q;
     let list = (data as (DiaryEntry & { students?: { name: string } })[]) || [];
-    // filter by class
     if (fClass) {
       const { data: cls } = await supabase.from('students').select('id').eq('class', fClass);
       const ids = (cls as { id: string }[])?.map((r) => r.id) || [];
@@ -81,6 +88,13 @@ export default function TeacherDiary() {
     setRows((rs) => rs.filter((_, idx) => idx !== i));
   }
 
+  function applyPreset(preset: string) {
+    setRows((rs) => {
+      const last = rs[rs.length - 1];
+      return rs.map((r, i) => (i === rs.length - 1 ? { ...r, topic: (r.topic + ' ' + preset).trim() } : r));
+    });
+  }
+
   async function save() {
     if (!selectedStudent) return;
     const valid = rows.filter((r) => r.topic.trim());
@@ -94,6 +108,11 @@ export default function TeacherDiary() {
       status: 'Approved',
     }));
     await supabase.from('diary_entries').insert(inserts);
+    await sendPushAlert(
+      "Ravi's Tuition Centre · New Homework",
+      `New homework assigned for ${selectedStudent.name} on ${entryDate}. Open app to verify.`,
+      selectedStudent.parent_phone ? [selectedStudent.parent_phone] : undefined,
+    );
     setSaving(false);
     setShowAdd(false);
     setSelectedStudent(null);
@@ -152,6 +171,9 @@ export default function TeacherDiary() {
               </div>
               <span className={`badge ${e.status === 'Approved' ? 'bg-green-100 text-green-700' : e.status === 'Pending' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`}>
                 {e.status}
+              </span>
+              <span className={`badge ${e.parent_verified ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                {e.parent_verified ? <span className="flex items-center gap-1"><CheckCircle2 size={11} /> Verified</span> : <span className="flex items-center gap-1"><XCircle size={11} /> Not Verified</span>}
               </span>
               <div className="flex gap-1">
                 <button onClick={() => setStatus(e, 'Approved')} className="btn-ghost !p-1.5" title="Approve">
@@ -226,6 +248,19 @@ export default function TeacherDiary() {
                       <button onClick={addRow} className="btn-ghost !py-1 text-xs">
                         <Plus size={12} /> Add subject
                       </button>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5 mb-2">
+                      <span className="text-[11px] text-slate-400 self-center mr-1">Presets:</span>
+                      {PRESET_HOMEWORK.map((p) => (
+                        <button
+                          key={p}
+                          type="button"
+                          onClick={() => applyPreset(p)}
+                          className="badge bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 text-xs"
+                        >
+                          {p}...
+                        </button>
+                      ))}
                     </div>
                     <div className="space-y-2">
                       {rows.map((r, i) => (

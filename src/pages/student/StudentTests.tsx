@@ -28,6 +28,7 @@ export default function StudentTests() {
   const [current, setCurrent] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<{ score: number; total: number; pct: number } | null>(null);
+  const [subjectFilter, setSubjectFilter] = useState('All');
 
   useEffect(() => {
     if (!sid) return;
@@ -47,6 +48,7 @@ export default function StudentTests() {
           quizList = quizList.filter((q) => !q.stream || q.stream === st.stream);
         }
         setQuizzes(quizList);
+        setSubjectFilter('All');
       }
       const { data: p } = await supabase
         .from('daily_tests')
@@ -251,19 +253,39 @@ export default function StudentTests() {
       <h2 className="section-title">Daily Tests</h2>
       <div>
         <h3 className="font-bold text-sm mb-2">Available Quizzes</h3>
+        {quizzes.length > 0 && (
+          <div className="flex gap-2 overflow-x-auto no-scrollbar mb-3">
+            {['All', 'Tamil', 'English', 'Maths', 'Science', 'Social'].map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setSubjectFilter(tab)}
+                className={`badge ${subjectFilter === tab ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'}`}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
+        )}
         {quizzes.length === 0 ? (
           <div className="card p-8 text-center text-slate-500 flex items-center justify-center gap-2">
             <HelpCircle size={18} /> No active quizzes for your class.
           </div>
         ) : (
           <div className="space-y-2">
-            {quizzes.map((q) => (
+            {quizzes
+              .filter((q) => subjectFilter === 'All' || q.subject === subjectFilter)
+              .map((q) => (
               <div key={q.id} className="card p-3 flex items-center gap-3">
                 <div className="w-10 h-10 rounded-lg bg-purple-100 text-purple-600 flex items-center justify-center">
                   <HelpCircle size={20} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="font-bold text-sm">{q.title}</div>
+                  <div className="font-bold text-sm flex items-center gap-2">
+                    {q.title}
+                    {q.is_pyq && (
+                      <span className="badge bg-amber-100 text-amber-700 text-[10px] animate-pulse">⭐ 5-Year Board Favorite</span>
+                    )}
+                  </div>
                   <div className="text-xs text-slate-400">
                     {q.subject} · {q.duration} min · {q.total_marks} marks
                   </div>
