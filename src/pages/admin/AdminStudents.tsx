@@ -1,13 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
-import {
-  CLASSES,
-  BOARDS,
-  STREAMS,
-  COMMERCE_ELECTIVES,
-  STATUSES,
-} from '@/lib/brand';
+import { CLASSES, BOARDS, STREAMS, COMMERCE_ELECTIVES, STATUSES, DEFAULT_AVATAR } from '@/lib/brand';
 import type { Student } from '@/lib/types';
 import BackBar from '@/components/BackBar';
 import {
@@ -184,7 +178,7 @@ export default function AdminStudents() {
               <div key={s.id} className="card p-3">
                 <div className="flex items-start gap-3">
                   <img
-                    src={s.photo_url || 'https://images.pexels.com/photos/220457/pexels-photo-220457.jpeg'}
+                    src={s.photo_url || DEFAULT_AVATAR}
                     alt={s.name}
                     className="w-12 h-12 rounded-lg object-cover"
                   />

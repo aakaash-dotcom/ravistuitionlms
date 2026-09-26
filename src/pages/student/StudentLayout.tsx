@@ -5,7 +5,8 @@ import Footer from '@/components/Footer';
 import { LanguageProvider, useLang } from '@/components/LanguageProvider';
 import LanguageToggle from '@/components/LanguageToggle';
 import NotificationCenter from '@/components/NotificationCenter';
-import { clearSession, getSession } from '@/lib/auth';
+import { clearSession } from '@/lib/auth';
+import { useSession } from '@/lib/useSession';
 import { BRAND } from '@/lib/brand';
 import { LayoutDashboard } from 'lucide-react';
 
@@ -13,12 +14,17 @@ function StudentShell() {
   const nav = useNavigate();
   const loc = useLocation();
   const { lang } = useLang();
-  const s = getSession();
+  const s = useSession();
   useEffect(() => {
     if (!s || s.role !== 'student') nav('/');
   }, [s, nav]);
 
   function logout() {
+    clearSession();
+    nav('/');
+  }
+
+  function switchAccount() {
     clearSession();
     nav('/');
   }
@@ -31,6 +37,7 @@ function StudentShell() {
         title={`${BRAND.name}`}
         subtitle={`Student Portal · ${s?.studentName || ''} (${s?.rollNo || ''})`}
         onLogout={logout}
+        onSwitchAccount={switchAccount}
         right={
           <div className="flex items-center gap-2">
             <NotificationCenter studentIds={s?.studentId ? [s.studentId] : []} />

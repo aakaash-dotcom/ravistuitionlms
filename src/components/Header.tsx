@@ -1,15 +1,16 @@
 import { BRAND } from '@/lib/brand';
-import { GraduationCap, Phone, MessageCircle, LogOut } from 'lucide-react';
+import { GraduationCap, Phone, MessageCircle, LogOut, RefreshCw } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 interface Props {
   title: string;
   subtitle?: string;
   onLogout?: () => void;
+  onSwitchAccount?: () => void;
   right?: ReactNode;
 }
 
-export default function Header({ title, subtitle, onLogout, right }: Props) {
+export default function Header({ title, subtitle, onLogout, onSwitchAccount, right }: Props) {
   return (
     <header className="bg-[#0F172A] text-white">
       <div className="max-w-5xl mx-auto px-4 py-3 flex items-center gap-3">
@@ -27,6 +28,16 @@ export default function Header({ title, subtitle, onLogout, right }: Props) {
           )}
         </div>
         {right}
+        {onSwitchAccount && (
+          <button
+            onClick={onSwitchAccount}
+            className="btn-ghost !bg-white/10 !border-white/20 !text-white hover:!bg-white/20 !py-1.5 !px-3"
+            title="Switch Account"
+          >
+            <RefreshCw size={14} />
+            <span className="hidden sm:inline">Switch</span>
+          </button>
+        )}
         {onLogout && (
           <button
             onClick={onLogout}

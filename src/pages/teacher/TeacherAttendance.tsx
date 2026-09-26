@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { CLASSES, STREAMS } from '@/lib/brand';
+import { CLASSES, STREAMS, BRAND } from '@/lib/brand';
 import type { Student, AttendanceRow } from '@/lib/types';
+import type { WhatsAppRequest } from '@/lib/whatsapp';
+import { sendWhatsApp, normalizePhone } from '@/lib/whatsapp';
+import { sendPushAlert } from '@/lib/onesignal';
 import BackBar from '@/components/BackBar';
 import { Loader2, Save, Sun, Moon, CheckCheck } from 'lucide-react';
-import { sendPushAlert } from '@/lib/onesignal';
 
 export default function TeacherAttendance() {
   const [students, setStudents] = useState<Student[]>([]);
@@ -29,7 +31,6 @@ export default function TeacherAttendance() {
       list.forEach((s) => (init[s.id] = 'Present'));
       setStatuses(init);
 
-      // load existing attendance for this date+session
       if (list.length > 0) {
         const { data: existing } = await supabase
           .from('attendance')
@@ -60,15 +61,33 @@ export default function TeacherAttendance() {
       status: statuses[s.id] || 'Present',
       session,
     }));
-    // delete existing for this date+session, then insert
     await supabase.from('attendance').delete().in('student_id', students.map((s) => s.id)).eq('date', date).eq('session', session);
     await supabase.from('attendance').insert(rows);
-    const parentPhones = students.filter((s) => s.parent_phone).map((s) => s.parent_phone!);
-    await sendPushAlert(
-      "Ravi's Tuition Centre · Attendance",
-      `Attendance marked for ${date} (${session} Session). Open app to check status.`,
-      parentPhones.length > 0 ? parentPhones : undefined,
-    );
+
+    // Send per-student targeted notification (push + WhatsApp) to each parent
+    for (const s of students) {
+      const status = statuses[s.id] || 'Present';
+      const targetIds: string[] = [];
+      if (s.parent_phone) targetIds.push(s.parent_phone);
+      if (s.roll_no) targetIds.push(s.roll_no);
+
+      const pushMsg = `${s.name} (${s.roll_no}) was marked ${status} on ${date} (${session} Session).`;
+      await sendPushAlert(
+        `${BRAND.name} · Attendance`,
+        pushMsg,
+        targetIds.length > 0 ? targetIds : undefined,
+      );
+
+      if (s.parent_phone) {
+        const waMsg: WhatsAppRequest = {
+          number: normalizePhone(s.parent_phone),
+          type: 'text',
+          message: `📋 ${BRAND.name}\nAttendance Update\nStudent: ${s.name} (${s.roll_no})\nDate: ${date}\nSession: ${session}\nStatus: ${status}`,
+        };
+        await sendWhatsApp(waMsg);
+      }
+    }
+
     setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
@@ -155,7 +174,7 @@ export default function TeacherAttendance() {
       <button onClick={save} className="btn-primary w-full" disabled={saving}>
         {saving ? <Loader2 size={16} className="animate-spin" /> : <><Save size={16} /> Save {session} Attendance</>}
       </button>
-      {saved && <p className="text-center text-sm text-green-600">Attendance saved!</p>}
+      {saved && <p className="text-center text-sm text-green-600">Attendance saved! Notifications sent to parents.</p>}
     </div>
   );
 }

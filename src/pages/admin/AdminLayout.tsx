@@ -1,7 +1,8 @@
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { clearSession, getSession } from '@/lib/auth';
+import { clearSession } from '@/lib/auth';
+import { useSession } from '@/lib/useSession';
 import { useEffect } from 'react';
 import { BRAND } from '@/lib/brand';
 import { LayoutDashboard } from 'lucide-react';
@@ -9,12 +10,17 @@ import { LayoutDashboard } from 'lucide-react';
 export default function AdminLayout() {
   const nav = useNavigate();
   const loc = useLocation();
-  const s = getSession();
+  const s = useSession();
   useEffect(() => {
     if (!s || s.role !== 'admin') nav('/');
   }, [s, nav]);
 
   function logout() {
+    clearSession();
+    nav('/');
+  }
+
+  function switchAccount() {
     clearSession();
     nav('/');
   }
@@ -27,6 +33,7 @@ export default function AdminLayout() {
         title={`${BRAND.name} · Admin`}
         subtitle={`Welcome ${s?.adminName || 'Admin'}`}
         onLogout={logout}
+        onSwitchAccount={switchAccount}
         right={
           !onDashboard && (
             <button

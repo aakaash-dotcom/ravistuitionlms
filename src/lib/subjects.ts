@@ -41,8 +41,8 @@ export function getSubjectsForClass(
   commerceElective?: string | null,
 ): string[] {
   if (grade === '11th' || grade === '12th') {
-    if (!stream) return CORE_SUBJECTS;
-    const base = STREAM_SUBJECTS[stream] || CORE_SUBJECTS;
+    if (!stream) return ALL_STREAM_SUBJECTS;
+    const base = STREAM_SUBJECTS[stream] || ALL_STREAM_SUBJECTS;
     if (stream === 'Commerce' && commerceElective === 'Business Maths') {
       return [
         'Tamil',
@@ -57,6 +57,10 @@ export function getSubjectsForClass(
   }
   return CORE_SUBJECTS;
 }
+
+export const ALL_STREAM_SUBJECTS = Array.from(
+  new Set(Object.values(STREAM_SUBJECTS).flat()),
+);
 
 export const ALL_SUBJECTS = Array.from(
   new Set([

@@ -20,6 +20,8 @@ export const BRAND = {
   logo: 'https://i.imgur.com/PxSCGbL.png',
 };
 
+export const DEFAULT_AVATAR = BRAND.logo;
+
 export const CLASSES = ['8th', '9th', '10th', '11th', '12th'];
 export const BOARDS = ['State', 'CBSE', 'ICSE'];
 export const STREAMS = ['Bio-Maths', 'Computer Science', 'Commerce'];

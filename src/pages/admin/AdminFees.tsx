@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { CLASSES } from '@/lib/brand';
+import { CLASSES, DEFAULT_AVATAR } from '@/lib/brand';
 import type { FeeRow, Student } from '@/lib/types';
 import BackBar from '@/components/BackBar';
 import { Plus, X, Loader2, Wallet, Search } from 'lucide-react';
@@ -96,7 +96,7 @@ export default function AdminFees() {
             return (
               <div key={s.id} className="card p-3">
                 <div className="flex items-center gap-3">
-                  <img src={s.photo_url || 'https://images.pexels.com/photos/220457/pexels-photo-220457.jpeg'} className="w-10 h-10 rounded-lg object-cover" alt={s.name} />
+                  <img src={s.photo_url || DEFAULT_AVATAR} className="w-10 h-10 rounded-lg object-cover" alt={s.name} />
                   <div className="flex-1 min-w-0">
                     <div className="font-bold text-sm">{s.name}</div>
                     <div className="text-xs text-slate-400">{s.roll_no} · {s.class}</div>

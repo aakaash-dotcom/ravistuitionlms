@@ -1,6 +1,7 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useEffect } from 'react';
 import { initOneSignal } from '@/lib/onesignal';
+import { getSession } from '@/lib/auth';
 import LoginPage from '@/pages/LoginPage';
 import AdminLayout from '@/pages/admin/AdminLayout';
 import AdminDashboard from '@/pages/admin/AdminDashboard';
@@ -38,55 +39,82 @@ import TeacherDiary from '@/pages/teacher/TeacherDiary';
 import TeacherNotices from '@/pages/teacher/TeacherNotices';
 import TeacherPlanner from '@/pages/teacher/TeacherPlanner';
 
+function RoleRedirect() {
+  const s = getSession();
+  if (!s) return <Navigate to="/" replace />;
+  if (s.role === 'admin') return <Navigate to="/admin" replace />;
+  if (s.role === 'teacher') return <Navigate to="/teacher" replace />;
+  if (s.role === 'parent') return <Navigate to="/parent" replace />;
+  return <Navigate to="/student" replace />;
+}
+
+function AppRoutes() {
+  const loc = useLocation();
+  const s = getSession();
+
+  // If user has a session and is on the login page, redirect to their dashboard
+  useEffect(() => {
+    if (s && loc.pathname === '/') {
+      const dest = s.role === 'admin' ? '/admin' : s.role === 'teacher' ? '/teacher' : s.role === 'parent' ? '/parent' : '/student';
+      window.location.href = dest;
+    }
+  }, [s, loc.pathname]);
+
+  return (
+    <Routes>
+      <Route path="/" element={<LoginPage />} />
+      <Route path="/dashboard" element={<RoleRedirect />} />
+      <Route path="/admin" element={<AdminLayout />}>
+        <Route index element={<AdminDashboard />} />
+        <Route path="tests" element={<AdminTests />} />
+        <Route path="students" element={<AdminStudents />} />
+        <Route path="attendance" element={<AdminAttendance />} />
+        <Route path="diary" element={<AdminDiary />} />
+        <Route path="notices" element={<AdminNotices />} />
+        <Route path="materials" element={<AdminMaterials />} />
+        <Route path="banners" element={<AdminBanners />} />
+        <Route path="fees" element={<AdminFees />} />
+        <Route path="mcq" element={<AdminMcq />} />
+        <Route path="settings" element={<AdminSettings />} />
+        <Route path="teachers" element={<AdminTeachers />} />
+        <Route path="teacher-attendance" element={<AdminTeacherAttendance />} />
+        <Route path="planners" element={<AdminPlanners />} />
+      </Route>
+      <Route path="/parent" element={<ParentLayout />}>
+        <Route index element={<ParentDashboard />} />
+        <Route path="tests" element={<ParentTests />} />
+        <Route path="attendance" element={<ParentAttendance />} />
+        <Route path="diary" element={<ParentDiary />} />
+        <Route path="notices" element={<ParentNotices />} />
+        <Route path="fees" element={<ParentFees />} />
+      </Route>
+      <Route path="/student" element={<StudentLayout />}>
+        <Route index element={<StudentDashboard />} />
+        <Route path="tests" element={<StudentTests />} />
+        <Route path="diary" element={<StudentDiary />} />
+        <Route path="attendance" element={<StudentAttendance />} />
+        <Route path="materials" element={<StudentMaterials />} />
+      </Route>
+      <Route path="/teacher" element={<TeacherLayout />}>
+        <Route index element={<TeacherDashboard />} />
+        <Route path="marks" element={<TeacherMarks />} />
+        <Route path="attendance" element={<TeacherAttendance />} />
+        <Route path="diary" element={<TeacherDiary />} />
+        <Route path="notices" element={<TeacherNotices />} />
+        <Route path="planner" element={<TeacherPlanner />} />
+      </Route>
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
+}
+
 export default function App() {
   useEffect(() => {
     initOneSignal();
   }, []);
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<LoginPage />} />
-        <Route path="/admin" element={<AdminLayout />}>
-          <Route index element={<AdminDashboard />} />
-          <Route path="tests" element={<AdminTests />} />
-          <Route path="students" element={<AdminStudents />} />
-          <Route path="attendance" element={<AdminAttendance />} />
-          <Route path="diary" element={<AdminDiary />} />
-          <Route path="notices" element={<AdminNotices />} />
-          <Route path="materials" element={<AdminMaterials />} />
-          <Route path="banners" element={<AdminBanners />} />
-          <Route path="fees" element={<AdminFees />} />
-          <Route path="mcq" element={<AdminMcq />} />
-          <Route path="settings" element={<AdminSettings />} />
-          <Route path="teachers" element={<AdminTeachers />} />
-          <Route path="teacher-attendance" element={<AdminTeacherAttendance />} />
-          <Route path="planners" element={<AdminPlanners />} />
-        </Route>
-        <Route path="/parent" element={<ParentLayout />}>
-          <Route index element={<ParentDashboard />} />
-          <Route path="tests" element={<ParentTests />} />
-          <Route path="attendance" element={<ParentAttendance />} />
-          <Route path="diary" element={<ParentDiary />} />
-          <Route path="notices" element={<ParentNotices />} />
-          <Route path="fees" element={<ParentFees />} />
-        </Route>
-        <Route path="/student" element={<StudentLayout />}>
-          <Route index element={<StudentDashboard />} />
-          <Route path="tests" element={<StudentTests />} />
-          <Route path="diary" element={<StudentDiary />} />
-          <Route path="attendance" element={<StudentAttendance />} />
-          <Route path="materials" element={<StudentMaterials />} />
-        </Route>
-        <Route path="/teacher" element={<TeacherLayout />}>
-          <Route index element={<TeacherDashboard />} />
-          <Route path="marks" element={<TeacherMarks />} />
-          <Route path="attendance" element={<TeacherAttendance />} />
-          <Route path="diary" element={<TeacherDiary />} />
-          <Route path="notices" element={<TeacherNotices />} />
-          <Route path="planner" element={<TeacherPlanner />} />
-        </Route>
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+      <AppRoutes />
     </BrowserRouter>
   );
 }
