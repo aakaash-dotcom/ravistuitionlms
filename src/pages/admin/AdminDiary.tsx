@@ -138,20 +138,20 @@ export default function AdminDiary() {
       : ALL_SUBJECTS;
 
   async function notifyStudent(s: Student, valid: EntryRow[]) {
-    const subjectSummary = valid.map((r) => `${r.subject}: ${r.topic}`).join(', ');
+    const subjectSummary = valid.map((r) => `${r.subject}: ${r.topic}`).join('\n');
     const targetIds: string[] = [];
     if (s.parent_phone) targetIds.push(s.parent_phone);
     if (s.roll_no) targetIds.push(s.roll_no);
     await sendPushAlert(
       `${BRAND.name} · Homework Diary`,
-      `New homework for ${s.name}: ${subjectSummary}`,
+      `${s.name} (${s.roll_no}) studied:\n${subjectSummary}\n\nPlease check the app and sign the diary.`,
       targetIds.length > 0 ? targetIds : undefined,
     );
     if (s.parent_phone) {
       const waMsg: WhatsAppRequest = {
         number: normalizePhone(s.parent_phone),
         type: 'text',
-        message: `📚 ${BRAND.name}\nHomework Diary for ${s.name} (${s.roll_no})\nDate: ${entryDate}\n${subjectSummary}`,
+        message: `📚 ${BRAND.name} - Homework Diary\n\nStudent: ${s.name} (${s.roll_no})\nDate: ${entryDate}\n\nWhat was studied today:\n${subjectSummary}\n\nPlease check the app and sign the diary. ✍️`,
       };
       await sendWhatsApp(waMsg);
     }

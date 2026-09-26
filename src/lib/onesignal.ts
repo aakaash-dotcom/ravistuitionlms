@@ -1,5 +1,8 @@
 import OneSignal from 'react-onesignal';
 
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
 let initialized = false;
 
 export async function initOneSignal(): Promise<void> {
@@ -60,9 +63,13 @@ export async function sendPushAlert(
   targetIds?: string[],
 ) {
   try {
-    const res = await fetch('/api/push', {
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/push-send`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        apikey: SUPABASE_ANON_KEY,
+      },
       body: JSON.stringify({ title, message, targetIds }),
     });
 
@@ -75,7 +82,7 @@ export async function sendPushAlert(
       console.warn('Push accepted by OneSignal, but matched 0 recipients.');
     }
   } catch (e) {
-    console.error('Error sending push alert via /api/push:', e);
+    console.error('Error sending push alert:', e);
   }
 }
 
