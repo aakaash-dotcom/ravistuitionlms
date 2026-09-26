@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
 import { initOneSignal } from '@/lib/onesignal';
 import { getSession } from '@/lib/auth';
@@ -50,15 +50,15 @@ function RoleRedirect() {
 
 function AppRoutes() {
   const loc = useLocation();
+  const nav = useNavigate();
   const s = getSession();
 
-  // If user has a session and is on the login page, redirect to their dashboard
   useEffect(() => {
     if (s && loc.pathname === '/') {
       const dest = s.role === 'admin' ? '/admin' : s.role === 'teacher' ? '/teacher' : s.role === 'parent' ? '/parent' : '/student';
-      window.location.href = dest;
+      nav(dest, { replace: true });
     }
-  }, [s, loc.pathname]);
+  }, [s, loc.pathname, nav]);
 
   return (
     <Routes>
