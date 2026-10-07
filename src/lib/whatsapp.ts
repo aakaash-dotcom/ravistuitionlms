@@ -13,6 +13,9 @@ export interface WhatsAppMessage {
   variables?: Record<string, string>;
 }
 
+// Alias for backward compatibility
+export type WhatsAppRequest = WhatsAppMessage;
+
 export async function sendWhatsApp(msg: WhatsAppMessage): Promise<{ success: boolean; data: unknown }> {
   try {
     const res = await fetch(`${SUPABASE_URL}/functions/v1/whatsapp-send`, {

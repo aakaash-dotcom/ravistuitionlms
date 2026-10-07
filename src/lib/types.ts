@@ -45,6 +45,9 @@ export interface AttendanceRow {
   date: string;
   status: string;
   session?: string | null;
+  entry_time?: string | null;
+  exit_time?: string | null;
+  punch_source?: string | null;
 }
 
 export interface TestReport {
@@ -190,6 +193,40 @@ export interface TeacherAttendanceRow {
   date: string;
   session: string;
   status: string;
+  created_at?: string;
+}
+
+// Biometric device
+export interface BiometricDevice {
+  id: string;
+  device_serial: string;
+  device_name: string;
+  location: string | null;
+  api_key: string | null;
+  api_url: string | null;
+  is_active: boolean;
+  created_at?: string;
+}
+
+// Biometric punch log
+export interface BiometricPunch {
+  id: string;
+  device_serial: string;
+  device_user_id: string;
+  punch_time: string;
+  punch_direction: string;
+  verify_mode: string;
+  processed: boolean;
+  student_id: string | null;
+  created_at?: string;
+}
+
+// Device User ID → Student mapping
+export interface BiometricStudentMap {
+  id: string;
+  device_serial: string;
+  device_user_id: string;
+  student_id: string;
   created_at?: string;
 }
 

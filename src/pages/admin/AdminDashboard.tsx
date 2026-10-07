@@ -17,6 +17,7 @@ import {
   UserCog,
   CalendarClock,
   ClipboardPen,
+  Fingerprint,
 } from 'lucide-react';
 
 export default function AdminDashboard() {
@@ -84,6 +85,7 @@ export default function AdminDashboard() {
     { to: '/admin/teachers', label: 'Teachers', icon: UserCog, color: 'bg-teal-500' },
     { to: '/admin/teacher-attendance', label: 'Teacher Att', icon: CalendarClock, color: 'bg-orange-500' },
     { to: '/admin/planners', label: 'Planners', icon: ClipboardPen, color: 'bg-violet-500' },
+    { to: '/admin/biometric', label: 'Biometric', icon: Fingerprint, color: 'bg-sky-500' },
   ];
 
   return (

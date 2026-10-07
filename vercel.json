@@ -1,5 +1,19 @@
 {
   "rewrites": [
     { "source": "/((?!api/).*)", "destination": "/index.html" }
+  ],
+  "crons": [
+    {
+      "path": "/api/biometric-poll",
+      "schedule": "*/5 6-22 * * *"
+    },
+    {
+      "path": "/api/absent-morning",
+      "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/absent-evening",
+      "schedule": "0 21 * * *"
+    }
   ]
 }

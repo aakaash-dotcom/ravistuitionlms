@@ -3,3 +3,12 @@ verify_jwt = false
 
 [functions.push-send]
 verify_jwt = false
+
+[functions.biometric-webhook]
+verify_jwt = false
+
+[functions.absent-whatsapp-cron]
+verify_jwt = false
+
+[functions.jisecure-sync]
+verify_jwt = false
