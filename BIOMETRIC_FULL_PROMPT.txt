@@ -1,0 +1,288 @@
+I have a tuition centre management app built with React + Supabase + Vercel (Vite + TypeScript + Tailwind). I bought a jiSECURE Smart Office XS200 fingerprint biometric device and I need you to fully integrate it with my app. ALL the code for this integration is already written and committed in the repo on branch `arena/89a8a1f5-ravistuitionlms`. Your job is to DEPLOY everything and SET IT UP so it works end-to-end.
+
+## WHAT THIS INTEGRATION DOES
+
+When a student scans their fingerprint on the XS200 device:
+- **Entry punch (1st punch)** → WhatsApp to parent: "Your child [name] has entered the centre at [time]"
+- **Exit punch (2nd punch)** → WhatsApp to parent: "Today's attendance: Present ✅ — Entry: [time], Exit: [time]"
+- **No punch at all** → At 9 PM (evening class) or 9 AM (morning class), WhatsApp to parent: "Today's attendance: Absent ❌"
+
+Admin can also register students in jiSECURE directly from the app, and view/manage biometric devices.
+
+## STEP-BY-STEP — DO ALL OF THESE IN ORDER
+
+### STEP 1: Run the Database Migration
+
+Execute the SQL migration file `supabase/migrations/20261007000000_add_biometric_integration.sql` in my Supabase database. You can do this by:
+- Going to Supabase Dashboard → SQL Editor
+- Opening the file and running the entire SQL
+
+This creates:
+- `biometric_devices` table — stores jiSECURE device info and API token
+- `biometric_punches` table — stores raw punch logs from the device
+- `biometric_student_map` table — maps jiSECURE employee_id to student records
+- Adds `entry_time` (text), `exit_time` (text), `punch_source` (text, default 'manual') columns to the existing `attendance` table
+- Adds settings rows for absent message timing
+
+### STEP 2: Deploy the 3 Supabase Edge Functions
+
+Deploy these Edge Functions from the repo:
+
+1. **`biometric-webhook`** from `supabase/functions/biometric-webhook/index.ts`
+   - This receives real-time punch events from jiSECURE via webhook
+   - jiSECURE sends this JSON on every punch: `{ "event": "punch_log", "emp_code": "26000", "company_id": 10000, "timestamp": "2026-10-07 13:51:51" }`
+   - The function looks up the student by matching `emp_code` to `roll_no` in the students table
+   - First punch of the session = ENTRY → creates attendance record + sends WhatsApp
+   - Second punch of the session = EXIT → updates attendance with exit time + sends WhatsApp
+   - WhatsApp is sent via the existing Deropo API (same as the current whatsapp-send function)
+
+2. **`jisecure-sync`** from `supabase/functions/jisecure-sync/index.ts`
+   - This registers students in jiSECURE SmartOffice via their REST API
+   - Uses `POST https://xs.jisecure.com/api/employee/add` with Bearer token authentication
+   - Sets `emp_code` = student's roll_no, `full_name` = student's name
+
+3. **`absent-whatsapp-cron`** from `supabase/functions/absent-whatsapp-cron/index.ts`
+   - Called by Vercel cron at 9 PM (evening) and 9 AM (morning)
+   - Finds all active students with no attendance record for today's session
+   - Marks them absent in the attendance table
+   - Sends WhatsApp to parent: "Today's attendance: Absent ❌"
+
+Deploy command for each:
+```bash
+supabase functions deploy biometric-webhook
+supabase functions deploy jisecure-sync
+supabase functions deploy absent-whatsapp-cron
+```
+
+### STEP 3: Set Supabase Edge Function Environment Variables / Secrets
+
+Set these in Supabase Dashboard → Edge Functions → Secrets (or via CLI):
+
+- `JISECURE_WEBHOOK_SECRET` = `ravis_tuition_hook_2026` (this is a secret key for webhook security)
+
+Note: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `DEROPO_API_KEY` should already be available from the existing Edge Functions (whatsapp-send uses DEROPO_API_KEY). Verify they are set.
+
+### STEP 4: Deploy the Vercel API Routes
+
+These are serverless functions in the `api/` directory that serve as cron jobs:
+
+- `api/biometric-poll.ts` — polls jiSECURE API every 5 minutes as a backup (in case webhook misses any punch)
+- `api/absent-morning.ts` — triggers morning absent check at 9 AM IST
+- `api/absent-evening.ts` — triggers evening absent check at 9 PM IST
+
+The cron schedule is already configured in `vercel.json`:
+```json
+{
+  "crons": [
+    { "path": "/api/biometric-poll", "schedule": "*/5 6-22 * * *" },
+    { "path": "/api/absent-morning", "schedule": "0 9 * * *" },
+    { "path": "/api/absent-evening", "schedule": "0 21 * * *" }
+  ]
+}
+```
+
+Set these Vercel environment variables:
+- `SUPABASE_SERVICE_ROLE_KEY` = my Supabase service role key (from Supabase Dashboard → Settings → API)
+- `CRON_SECRET` = `ravis_cron_2026` (random string to secure cron endpoints)
+
+### STEP 5: Verify the Frontend Build
+
+Run `npm run build` to make sure all the React/TypeScript code compiles correctly. All the frontend changes are already in the codebase:
+- New admin page at `/admin/biometric` for device management and student sync
+- Updated parent/student attendance views showing entry/exit times
+- "Biometric" quick action card on admin dashboard
+
+### STEP 6: Add a Test Student for Testing
+
+I need a test student to verify the integration works. Add this student to my Supabase `students` table:
+
+- **name**: Aakaash
+- **roll_no**: 26000
+- **password**: 26000
+- **class**: 10th
+- **board**: State
+- **phone**: 6380444830
+- **parent_phone**: 6380444830
+- **parent_name**: Parent
+- **status**: Active
+- **total_fee**: 0
+- **fee_paid**: 0
+
+You can insert this via Supabase Dashboard → Table Editor → students → Insert Row, or via SQL:
+```sql
+INSERT INTO students (name, roll_no, password, class, board, phone, parent_phone, parent_name, status, total_fee, fee_paid)
+VALUES ('Aakaash', '26000', '26000', '10th', 'State', '6380444830', '6380444830', 'Parent', 'Active', 0, 0)
+ON CONFLICT (roll_no) DO NOTHING;
+```
+
+### STEP 7: Register This Test Student in jiSECURE
+
+After the jisecure-sync Edge Function is deployed, call it to register the test student in jiSECURE:
+
+```bash
+curl -X POST "https://[your-project-ref].supabase.co/functions/v1/jisecure-sync?mode=add-student" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer [your-supabase-anon-key]" \
+  -H "apikey: [your-supabase-anon-key]" \
+  -d '{"student_id": "[the-uuid-of-the-aakaash-student]"}'
+```
+
+Alternatively, after everything is deployed, I can do this from the app:
+- Login as admin
+- Go to Admin → Biometric
+- Add the jiSECURE device with my API token
+- Click "Register All Students" (this will register Aakaash in jiSECURE)
+
+### STEP 8: Add the jiSECURE Device in the Database
+
+Insert a biometric device record so the app knows about the XS200:
+
+```sql
+INSERT INTO biometric_devices (device_serial, device_name, location, api_key, api_url, is_active)
+VALUES ('XS200-001', 'jiSECURE XS200', 'Main Entrance', '5qw6vRUqxMmCah_E-RtcNwwn3oSWdoB2', 'https://xs.jisecure.com/api', true)
+ON CONFLICT (device_serial) DO NOTHING;
+```
+
+The `api_key` field stores the jiSECURE Bearer token. The `api_url` is `https://xs.jisecure.com/api` (the base URL for all jiSECURE API endpoints).
+
+### STEP 9: After All Deployment — Tell Me the Webhook URL
+
+After deploying the biometric-webhook Edge Function, tell me its URL. It will be in this format:
+```
+https://[your-project-ref].supabase.co/functions/v1/biometric-webhook
+```
+
+I will then manually add this URL in the jiSECURE portal at:
+**xs.jisecure.com → Integrations > Webhook Settings → Add Webhook URL**
+
+With secret key: `ravis_tuition_hook_2026`
+
+## jiSECURE API REFERENCE (for your reference)
+
+### Authentication
+All API calls use: `Authorization: Bearer 5qw6vRUqxMmCah_E-RtcNwwn3oSWdoB2`
+
+### Endpoints
+- `POST https://xs.jisecure.com/api/employee/add` — Add/update employee (upsert by emp_code)
+  - Body: `{ "emp_code": "26000", "full_name": "Aakaash", "designation": "Student", "state_id": 1 }`
+- `GET https://xs.jisecure.com/api/employee/list` — List all employees
+- `POST https://xs.jisecure.com/api/employee/delete` — Delete/inactivate employee
+  - Body: `{ "emp_code": "26000", "state_id": 0 }` (0=soft delete, 2=permanent)
+
+### Webhook Payload (sent by jiSECURE on every punch)
+```json
+{
+  "event": "punch_log",
+  "emp_code": "26000",
+  "company_id": 10000,
+  "timestamp": "2026-10-07 13:51:51"
+}
+```
+
+## EXACT WHATSAPP MESSAGES (already coded in the Edge Functions)
+
+**Entry punch:**
+```
+✅ *Ravi's Tuition Centre*
+
+Your child *Aakaash* (26000) has entered the centre at *5:15 PM*.
+
+📅 Date: 07/10/2026
+📍 Session: Evening
+
+_Biometric Attendance_
+```
+
+**Exit punch:**
+```
+📋 *Ravi's Tuition Centre*
+
+Your child *Aakaash* (26000) has left the centre.
+
+📅 Date: 07/10/2026
+📍 Session: Evening
+
+*Today's Attendance: Present* ✅
+
+⏰ Entry Time: 5:15 PM
+⏰ Exit Time: 8:45 PM
+
+_Biometric Attendance_
+```
+
+**Absent (9 PM evening / 9 AM morning):**
+```
+📋 *Ravi's Tuition Centre*
+
+Your child *Aakaash* (26000) did not attend today's Evening class.
+
+📅 Date: 07/10/2026
+📍 Session: Evening
+
+*Today's Attendance: Absent* ❌
+
+If there is a valid reason for absence, please contact the centre.
+
+_Biometric Attendance_
+```
+
+## FULL ARCHITECTURE DIAGRAM
+
+```
+[Student scans fingerprint on XS200]
+        ↓ (WiFi, instant)
+[jiSECURE SmartOffice Cloud]
+        ↓ (real-time webhook POST)
+[Supabase Edge Function: biometric-webhook]
+        ↓
+  ┌─────────────────────────────────────────────┐
+  │ 1. Receive punch: { emp_code: "26000",     │
+  │     timestamp: "2026-10-07 17:15:00" }     │
+  │                                             │
+  │ 2. Look up student WHERE roll_no = "26000" │
+  │                                             │
+  │ 3. FIRST punch today + session:            │
+  │    → INSERT attendance (Present, entry_time)│
+  │    → WhatsApp parent: "entered at 5:15 PM" │
+  │                                             │
+  │ 4. SECOND punch today + session:           │
+  │    → UPDATE attendance SET exit_time        │
+  │    → WhatsApp parent: "Present ✅           │
+  │       Entry: 5:15 PM, Exit: 8:45 PM"       │
+  │                                             │
+  │ 5. 9 PM cron (absent-whatsapp-cron):       │
+  │    → No punch found = mark Absent           │
+  │    → WhatsApp parent: "Absent ❌"           │
+  └─────────────────────────────────────────────┘
+
+[Admin → Biometric page]
+        ↓
+  ┌─────────────────────────────────────────────┐
+  │ "Register All Students" button              │
+  │   → POST /api/employee/add to jiSECURE     │
+  │   → emp_code = roll_no, full_name = name   │
+  │                                             │
+  │ Then admin enrolls fingerprints on XS200    │
+  │ device using roll_no as Employee Code       │
+  └─────────────────────────────────────────────┘
+```
+
+## IMPORTANT NOTES
+- All code is already written and committed. You just need to DEPLOY and CONFIGURE.
+- The jiSECURE API token is: `5qw6vRUqxMmCah_E-RtcNwwn3oSWdoB2`
+- The WhatsApp API (Deropo) should already be working from the existing whatsapp-send function
+- The `emp_code` in jiSECURE = student's `roll_no` in our database (this is how the system links punches to students)
+- I will manually add the webhook URL in jiSECURE portal after you deploy the Edge Function
+- After deployment, I will test by enrolling the test student's fingerprint on the physical XS200 device and punching
+
+## SUMMARY OF WHAT TO DO
+1. Run the SQL migration in Supabase
+2. Deploy 3 Edge Functions to Supabase
+3. Set Edge Function secrets (JISECURE_WEBHOOK_SECRET)
+4. Deploy Vercel API routes (push code, set env vars)
+5. Insert test student (Aakaash, roll_no=26000) into students table
+6. Insert jiSECURE device record into biometric_devices table
+7. Verify frontend builds
+8. Tell me the webhook URL so I can add it to jiSECURE
+
+Please do ALL of these steps and confirm when each one is complete.

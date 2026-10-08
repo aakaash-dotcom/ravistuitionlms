@@ -5,11 +5,17 @@ import { useLang } from '@/components/LanguageProvider';
 import { t } from '@/lib/i18n';
 import type { AttendanceRow, Student } from '@/lib/types';
 import BackBar from '@/components/BackBar';
-import { Loader2, Sun, Moon, CheckCircle2, XCircle, Clock } from 'lucide-react';
+import { Loader2, Sun, Moon, CheckCircle2, XCircle, Clock, Fingerprint } from 'lucide-react';
 
 interface DaySessions {
   morning?: string;
   evening?: string;
+  morningEntry?: string | null;
+  morningExit?: string | null;
+  eveningEntry?: string | null;
+  eveningExit?: string | null;
+  morningSource?: string | null;
+  eveningSource?: string | null;
 }
 
 export default function ParentAttendance() {
@@ -45,8 +51,17 @@ export default function ParentAttendance() {
   const byDate: Record<string, DaySessions> = {};
   rows.forEach((r) => {
     if (!byDate[r.date]) byDate[r.date] = {};
-    if (r.session === 'Evening') byDate[r.date].evening = r.status;
-    else byDate[r.date].morning = r.status;
+    if (r.session === 'Evening') {
+      byDate[r.date].evening = r.status;
+      byDate[r.date].eveningEntry = r.entry_time;
+      byDate[r.date].eveningExit = r.exit_time;
+      byDate[r.date].eveningSource = r.punch_source;
+    } else {
+      byDate[r.date].morning = r.status;
+      byDate[r.date].morningEntry = r.entry_time;
+      byDate[r.date].morningExit = r.exit_time;
+      byDate[r.date].morningSource = r.punch_source;
+    }
   });
 
   const totalSessions = rows.length;
@@ -56,11 +71,30 @@ export default function ParentAttendance() {
 
   if (!active) return <div className="card p-8 text-center text-slate-500">{t(lang, 'loading')}</div>;
 
-  function StatusBadge({ status }: { status?: string }) {
+  function StatusBadge({ status, entryTime, exitTime, source }: { status?: string; entryTime?: string | null; exitTime?: string | null; source?: string | null }) {
     if (!status) return <span className="text-xs text-slate-300">—</span>;
-    if (status === 'Present') return <span className="badge bg-green-100 text-green-700"><CheckCircle2 size={10} className="mr-1" /> {status}</span>;
-    if (status === 'Absent') return <span className="badge bg-red-100 text-red-700"><XCircle size={10} className="mr-1" /> {status}</span>;
-    return <span className="badge bg-amber-100 text-amber-700"><Clock size={10} className="mr-1" /> {status}</span>;
+    const isBiometric = source === 'biometric';
+    return (
+      <div className="flex flex-col gap-0.5">
+        {status === 'Present' ? (
+          <span className="badge bg-green-100 text-green-700">
+            <CheckCircle2 size={10} className="mr-1" /> {status}
+            {isBiometric && <Fingerprint size={10} className="ml-1" />}
+          </span>
+        ) : status === 'Absent' ? (
+          <span className="badge bg-red-100 text-red-700"><XCircle size={10} className="mr-1" /> {status}</span>
+        ) : (
+          <span className="badge bg-amber-100 text-amber-700"><Clock size={10} className="mr-1" /> {status}</span>
+        )}
+        {(entryTime || exitTime) && (
+          <div className="text-[10px] text-slate-400 leading-tight">
+            {entryTime && <span>↗ {entryTime}</span>}
+            {entryTime && exitTime && <span> · </span>}
+            {exitTime && <span>↙ {exitTime}</span>}
+          </div>
+        )}
+      </div>
+    );
   }
 
   return (
@@ -119,12 +153,22 @@ export default function ParentAttendance() {
                     <div className="flex items-center gap-2">
                       <Sun size={14} className="text-amber-500" />
                       <span className="text-xs text-slate-500">{t(lang, 'morning')}:</span>
-                      <StatusBadge status={sessions.morning} />
+                      <StatusBadge
+                        status={sessions.morning}
+                        entryTime={sessions.morningEntry}
+                        exitTime={sessions.morningExit}
+                        source={sessions.morningSource}
+                      />
                     </div>
                     <div className="flex items-center gap-2">
                       <Moon size={14} className="text-indigo-500" />
                       <span className="text-xs text-slate-500">{t(lang, 'evening')}:</span>
-                      <StatusBadge status={sessions.evening} />
+                      <StatusBadge
+                        status={sessions.evening}
+                        entryTime={sessions.eveningEntry}
+                        exitTime={sessions.eveningExit}
+                        source={sessions.eveningSource}
+                      />
                     </div>
                   </div>
                 </div>

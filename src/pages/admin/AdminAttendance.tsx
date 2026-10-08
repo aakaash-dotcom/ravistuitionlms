@@ -6,7 +6,8 @@ import type { WhatsAppRequest } from '@/lib/whatsapp';
 import { sendWhatsApp, normalizePhone } from '@/lib/whatsapp';
 import { sendPushAlert } from '@/lib/onesignal';
 import BackBar from '@/components/BackBar';
-import { Loader2, Save, Sun, Moon } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Loader2, Save, Sun, Moon, Fingerprint, Clock } from 'lucide-react';
 
 export default function AdminAttendance() {
   const [students, setStudents] = useState<Student[]>([]);
@@ -97,6 +98,17 @@ export default function AdminAttendance() {
     <div className="space-y-4">
       <BackBar to="/admin" label="Back to Dashboard" />
       <h2 className="section-title">Attendance</h2>
+
+      <Link
+        to="/admin/biometric"
+        className="card p-3 flex items-center gap-3 bg-gradient-to-r from-sky-50 to-blue-50 border border-sky-200 hover:border-sky-400 transition"
+      >
+        <Fingerprint size={24} className="text-sky-600" />
+        <div className="flex-1">
+          <div className="font-semibold text-sm text-sky-800">Biometric Attendance (jiSECURE XS200)</div>
+          <div className="text-xs text-sky-600">Entry & exit times auto-tracked via fingerprint. Configure device & mappings.</div>
+        </div>
+      </Link>
 
       <div className="card p-3 grid grid-cols-2 md:grid-cols-4 gap-3">
         <select className="input" value={fClass} onChange={(e) => setFClass(e.target.value)}>

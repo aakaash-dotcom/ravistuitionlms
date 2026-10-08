@@ -18,6 +18,7 @@ import AdminSettings from '@/pages/admin/AdminSettings';
 import AdminTeachers from '@/pages/admin/AdminTeachers';
 import AdminTeacherAttendance from '@/pages/admin/AdminTeacherAttendance';
 import AdminPlanners from '@/pages/admin/AdminPlanners';
+import AdminBiometric from '@/pages/admin/AdminBiometric';
 import ParentLayout from '@/pages/parent/ParentLayout';
 import ParentDashboard from '@/pages/parent/ParentDashboard';
 import ParentTests from '@/pages/parent/ParentTests';
@@ -79,6 +80,7 @@ function AppRoutes() {
         <Route path="teachers" element={<AdminTeachers />} />
         <Route path="teacher-attendance" element={<AdminTeacherAttendance />} />
         <Route path="planners" element={<AdminPlanners />} />
+        <Route path="biometric" element={<AdminBiometric />} />
       </Route>
       <Route path="/parent" element={<ParentLayout />}>
         <Route index element={<ParentDashboard />} />
