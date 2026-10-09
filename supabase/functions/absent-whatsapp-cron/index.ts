@@ -1,20 +1,15 @@
 /*
  * absent-whatsapp-cron — Supabase Edge Function
  *
- * Designed to be called by a cron scheduler (e.g., Supabase pg_cron,
- * external cron service, or Vercel Cron).
+ * Called by Vercel Cron at 9 AM IST (morning) and 9 PM IST (evening).
+ * For each active student with no attendance record for today's session:
+ *   - Mark absent in attendance table
+ *   - Send WhatsApp to parent (if biometric_absent_enabled = 'true')
  *
- * Two modes:
- *   ?session=Morning — fires at 9 AM IST, checks for morning absentees
- *   ?session=Evening — fires at 9 PM IST, checks for evening absentees
- *
- * For each active student:
- *   - If no attendance record exists for today + session → mark absent
- *   - Send WhatsApp to parent: "Your child was absent today"
+ * Defaults to DISABLED when setting is missing.
  */
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -24,7 +19,9 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
+  auth: { persistSession: false },
+});
 
 async function sendWhatsApp(number: string, message: string): Promise<boolean> {
   const accessToken = Deno.env.get("DEROPO_API_KEY");
@@ -32,10 +29,7 @@ async function sendWhatsApp(number: string, message: string): Promise<boolean> {
   try {
     const res = await fetch("https://api.deropo.com/api/send", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Access-Token": accessToken,
-      },
+      headers: { "Content-Type": "application/json", "X-Access-Token": accessToken },
       body: JSON.stringify({ number, type: "text", message }),
     });
     return res.ok;
@@ -50,7 +44,7 @@ function normalizePhone(phone: string): string {
   return p;
 }
 
-serve(async (req: Request) => {
+Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
@@ -59,7 +53,6 @@ serve(async (req: Request) => {
     const url = new URL(req.url);
     let session = url.searchParams.get("session");
 
-    // If called via POST, read body
     if (req.method === "POST") {
       const body = await req.json();
       session = body.session || session;
@@ -72,16 +65,18 @@ serve(async (req: Request) => {
       );
     }
 
-    // Check if absent messages are enabled
-    const { data: setting } = await supabase
+    // Check if absent messages are enabled — DEFAULT to disabled if missing
+    const { data: absentSetting } = await supabase
       .from("settings")
       .select("value")
       .eq("key", "biometric_absent_enabled")
       .maybeSingle();
 
-    if (setting && (setting as { value: string }).value !== "true") {
+    const absentEnabled = absentSetting ? (absentSetting as { value: string }).value === "true" : false;
+
+    if (!absentEnabled) {
       return new Response(
-        JSON.stringify({ message: "Absent messages are disabled" }),
+        JSON.stringify({ message: "Absent messages are disabled", session }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -113,12 +108,10 @@ serve(async (req: Request) => {
       .eq("session", session);
 
     const presentIds = new Set(
-      ((todayAttendance || []) as Array<{ student_id: string }>).map(
-        (a) => a.student_id
-      )
+      ((todayAttendance || []) as Array<{ student_id: string }>).map((a) => a.student_id)
     );
 
-    const results = [];
+    const results: Array<{ student: string; roll_no: string; whatsapp: boolean }> = [];
     let absentCount = 0;
     let whatsappSent = 0;
 
@@ -126,7 +119,6 @@ serve(async (req: Request) => {
       const s = student as Record<string, unknown>;
       const studentId = s.id as string;
 
-      // Skip if already has attendance record (present, leave, or already marked absent)
       if (presentIds.has(studentId)) continue;
 
       // Mark absent in attendance
@@ -140,10 +132,9 @@ serve(async (req: Request) => {
 
       absentCount++;
 
-      // Send WhatsApp notification to parent
       const parentPhone = s.parent_phone as string | null;
+      let sent = false;
       if (parentPhone) {
-        const sessionTime = session === "Morning" ? "9:00 AM" : "9:00 PM";
         const waMsg =
           `📋 *Ravi's Tuition Centre*\n\n` +
           `Your child *${s.name}* (${s.roll_no}) did not attend today's ${session} class.\n\n` +
@@ -152,17 +143,11 @@ serve(async (req: Request) => {
           `*Today's Attendance: Absent* ❌\n\n` +
           `If there is a valid reason for absence, please contact the centre.\n\n` +
           `_Biometric Attendance_`;
-
-        const sent = await sendWhatsApp(normalizePhone(parentPhone), waMsg);
+        sent = await sendWhatsApp(normalizePhone(parentPhone), waMsg);
         if (sent) whatsappSent++;
       }
 
-      results.push({
-        student: s.name,
-        roll_no: s.roll_no,
-        status: "Absent",
-        whatsapp: !!parentPhone,
-      });
+      results.push({ student: s.name as string, roll_no: s.roll_no as string, whatsapp: sent });
     }
 
     return new Response(

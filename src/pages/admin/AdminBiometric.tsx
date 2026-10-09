@@ -50,8 +50,9 @@ export default function AdminBiometric() {
     student_id: '',
   });
 
-  // Settings
-  const [absentEnabled, setAbsentEnabled] = useState(true);
+  // Settings — defaults match database (absent=off, entry=off, exit=on)
+  const [absentEnabled, setAbsentEnabled] = useState(false);
+  const [whatsappOnEntry, setWhatsappOnEntry] = useState(false);
   const [whatsappOnExit, setWhatsappOnExit] = useState(true);
   const [absentMorning, setAbsentMorning] = useState('09:00');
   const [absentEvening, setAbsentEvening] = useState('21:00');
@@ -76,6 +77,7 @@ export default function AdminBiometric() {
         supabase.from('students').select('*').eq('status', 'Active').order('roll_no'),
         supabase.from('settings').select('*').in('key', [
           'biometric_absent_enabled',
+          'biometric_whatsapp_on_entry',
           'biometric_whatsapp_on_exit',
           'biometric_absent_morning_time',
           'biometric_absent_evening_time',
@@ -91,7 +93,8 @@ export default function AdminBiometric() {
       ((settingsRes.data || []) as Array<{ key: string; value: string }>).forEach((s) => {
         settingsMap[s.key] = s.value;
       });
-      setAbsentEnabled(settingsMap['biometric_absent_enabled'] !== 'false');
+      setAbsentEnabled(settingsMap['biometric_absent_enabled'] === 'true');
+      setWhatsappOnEntry(settingsMap['biometric_whatsapp_on_entry'] === 'true');
       setWhatsappOnExit(settingsMap['biometric_whatsapp_on_exit'] !== 'false');
       if (settingsMap['biometric_absent_morning_time']) setAbsentMorning(settingsMap['biometric_absent_morning_time']);
       if (settingsMap['biometric_absent_evening_time']) setAbsentEvening(settingsMap['biometric_absent_evening_time']);
@@ -153,6 +156,7 @@ export default function AdminBiometric() {
     setSaving(true);
     const updates = [
       { key: 'biometric_absent_enabled', value: absentEnabled ? 'true' : 'false' },
+      { key: 'biometric_whatsapp_on_entry', value: whatsappOnEntry ? 'true' : 'false' },
       { key: 'biometric_whatsapp_on_exit', value: whatsappOnExit ? 'true' : 'false' },
       { key: 'biometric_absent_morning_time', value: absentMorning },
       { key: 'biometric_absent_evening_time', value: absentEvening },
@@ -494,6 +498,22 @@ export default function AdminBiometric() {
         </h3>
 
         <div className="space-y-4">
+          {/* WhatsApp on Entry */}
+          <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+            <div>
+              <div className="font-semibold text-sm">WhatsApp on Entry Punch</div>
+              <div className="text-xs text-slate-500">
+                Send a WhatsApp message to parents when student enters the centre
+              </div>
+            </div>
+            <button
+              onClick={() => setWhatsappOnEntry(!whatsappOnEntry)}
+              className={`badge cursor-pointer ${whatsappOnEntry ? 'bg-green-500 text-white' : 'bg-slate-200 text-slate-600'}`}
+            >
+              {whatsappOnEntry ? 'ON' : 'OFF'}
+            </button>
+          </div>
+
           {/* WhatsApp on Exit */}
           <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
             <div>
@@ -515,7 +535,7 @@ export default function AdminBiometric() {
             <div>
               <div className="font-semibold text-sm">Auto Absent Messages</div>
               <div className="text-xs text-slate-500">
-                Automatically mark students absent and send WhatsApp if no punch detected
+                Automatically mark students absent and send WhatsApp if no punch detected by cutoff time. Keep OFF if you have connectivity issues with the biometric device.
               </div>
             </div>
             <button
