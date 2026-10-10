@@ -3,7 +3,6 @@
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ],
   "crons": [
-    { "path": "/api/absent-morning", "schedule": "30 3 * * *" },
-    { "path": "/api/absent-evening", "schedule": "30 15 * * *" }
+    { "path": "/api/absent-evening", "schedule": "30 16 * * *" }
   ]
 }

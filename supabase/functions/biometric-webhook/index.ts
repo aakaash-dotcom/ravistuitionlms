@@ -2,11 +2,15 @@
  * biometric-webhook — Supabase Edge Function
  *
  * Receives punch events from jiSECURE SmartOffice webhook.
- * Uses correct database columns: emp_code, company_id, raw_payload, processed, student_id, session.
  *
- * WhatsApp settings checked from settings table:
- *   biometric_whatsapp_on_entry — if 'false', no message on entry punch
- *   biometric_whatsapp_on_exit  — if 'false', no message on exit punch
+ * Rules:
+ *   1st punch (entry)  → Record entry time. NO WhatsApp.
+ *   2nd punch (exit)   → Record exit time. SEND WhatsApp to parent
+ *                        with student name, roll no, entry time, exit time, date, session.
+ *
+ * Session: before 2 PM IST = Morning, 2 PM onwards = Evening
+ *
+ * Setting: biometric_exit_messages — if 'false', no WhatsApp on exit.
  */
 
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
@@ -155,7 +159,7 @@ async function processPunch(body: Record<string, unknown>) {
     .maybeSingle();
 
   if (!existingAttendance) {
-    // FIRST PUNCH = ENTRY
+    // FIRST PUNCH = ENTRY — no WhatsApp
     await supabase.from("attendance").insert({
       student_id: studentId,
       date: today,
@@ -172,19 +176,7 @@ async function processPunch(body: Record<string, unknown>) {
       { onConflict: "emp_code" }
     );
 
-    // WhatsApp on entry — only if setting is 'true'
-    const entryEnabled = await getSetting("biometric_whatsapp_on_entry");
-    if (entryEnabled === "true" && parentPhone) {
-      const msg =
-        `✅ *Ravi's Tuition Centre*\n\n` +
-        `Your child *${studentName}* (${rollNo}) has entered the centre at *${timeStr}*.\n\n` +
-        `📅 Date: ${dateStr}\n` +
-        `📍 Session: ${session}\n\n` +
-        `_Biometric Attendance_`;
-      await sendWhatsApp(normalizePhone(parentPhone), msg);
-    }
-
-    return { success: true, action: "entry", student: studentName, time: timeStr, whatsapp: entryEnabled === "true" };
+    return { success: true, action: "entry", student: studentName, time: timeStr };
   }
 
   // SECOND PUNCH = EXIT
@@ -200,8 +192,8 @@ async function processPunch(body: Record<string, unknown>) {
     .update({ exit_time: timeStr, status: "Present", punch_source: "biometric" })
     .eq("id", existing.id as string);
 
-  // WhatsApp on exit — only if setting is NOT 'false' (default ON)
-  const exitEnabled = await getSetting("biometric_whatsapp_on_exit");
+  // WhatsApp on exit — check biometric_exit_messages setting (default ON)
+  const exitEnabled = await getSetting("biometric_exit_messages");
   if (exitEnabled !== "false" && parentPhone) {
     const msg =
       `📋 *Ravi's Tuition Centre*\n\n` +

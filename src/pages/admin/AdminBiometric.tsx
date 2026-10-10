@@ -50,12 +50,9 @@ export default function AdminBiometric() {
     student_id: '',
   });
 
-  // Settings — defaults match database (absent=off, entry=off, exit=on)
-  const [absentEnabled, setAbsentEnabled] = useState(false);
-  const [whatsappOnEntry, setWhatsappOnEntry] = useState(false);
-  const [whatsappOnExit, setWhatsappOnExit] = useState(true);
-  const [absentMorning, setAbsentMorning] = useState('09:00');
-  const [absentEvening, setAbsentEvening] = useState('21:00');
+  // Settings — exit messages ON, night check ON
+  const [exitMessages, setExitMessages] = useState(true);
+  const [absentEnabled, setAbsentEnabled] = useState(true);
 
   // Sync state
   const [syncing, setSyncing] = useState(false);
@@ -76,11 +73,8 @@ export default function AdminBiometric() {
           .order('created_at', { ascending: false }),
         supabase.from('students').select('*').eq('status', 'Active').order('roll_no'),
         supabase.from('settings').select('*').in('key', [
+          'biometric_exit_messages',
           'biometric_absent_enabled',
-          'biometric_whatsapp_on_entry',
-          'biometric_whatsapp_on_exit',
-          'biometric_absent_morning_time',
-          'biometric_absent_evening_time',
         ]),
       ]);
 
@@ -93,11 +87,8 @@ export default function AdminBiometric() {
       ((settingsRes.data || []) as Array<{ key: string; value: string }>).forEach((s) => {
         settingsMap[s.key] = s.value;
       });
-      setAbsentEnabled(settingsMap['biometric_absent_enabled'] === 'true');
-      setWhatsappOnEntry(settingsMap['biometric_whatsapp_on_entry'] === 'true');
-      setWhatsappOnExit(settingsMap['biometric_whatsapp_on_exit'] !== 'false');
-      if (settingsMap['biometric_absent_morning_time']) setAbsentMorning(settingsMap['biometric_absent_morning_time']);
-      if (settingsMap['biometric_absent_evening_time']) setAbsentEvening(settingsMap['biometric_absent_evening_time']);
+      setExitMessages(settingsMap['biometric_exit_messages'] !== 'false');
+      setAbsentEnabled(settingsMap['biometric_absent_enabled'] !== 'false');
     } catch (e) {
       setError(String(e));
     }
@@ -155,11 +146,8 @@ export default function AdminBiometric() {
   async function saveSettings() {
     setSaving(true);
     const updates = [
+      { key: 'biometric_exit_messages', value: exitMessages ? 'true' : 'false' },
       { key: 'biometric_absent_enabled', value: absentEnabled ? 'true' : 'false' },
-      { key: 'biometric_whatsapp_on_entry', value: whatsappOnEntry ? 'true' : 'false' },
-      { key: 'biometric_whatsapp_on_exit', value: whatsappOnExit ? 'true' : 'false' },
-      { key: 'biometric_absent_morning_time', value: absentMorning },
-      { key: 'biometric_absent_evening_time', value: absentEvening },
     ];
     for (const u of updates) {
       await supabase.from('settings').upsert(u);
@@ -498,44 +486,28 @@ export default function AdminBiometric() {
         </h3>
 
         <div className="space-y-4">
-          {/* WhatsApp on Entry */}
+          {/* Exit Messages */}
           <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
             <div>
-              <div className="font-semibold text-sm">WhatsApp on Entry Punch</div>
+              <div className="font-semibold text-sm">Exit WhatsApp Messages</div>
               <div className="text-xs text-slate-500">
-                Send a WhatsApp message to parents when student enters the centre
+                Send WhatsApp to parents when student punches out (includes entry time, exit time, date and session)
               </div>
             </div>
             <button
-              onClick={() => setWhatsappOnEntry(!whatsappOnEntry)}
-              className={`badge cursor-pointer ${whatsappOnEntry ? 'bg-green-500 text-white' : 'bg-slate-200 text-slate-600'}`}
+              onClick={() => setExitMessages(!exitMessages)}
+              className={`badge cursor-pointer ${exitMessages ? 'bg-green-500 text-white' : 'bg-slate-200 text-slate-600'}`}
             >
-              {whatsappOnEntry ? 'ON' : 'OFF'}
+              {exitMessages ? 'ON' : 'OFF'}
             </button>
           </div>
 
-          {/* WhatsApp on Exit */}
+          {/* Night Check Messages */}
           <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
             <div>
-              <div className="font-semibold text-sm">WhatsApp on Exit Punch</div>
+              <div className="font-semibold text-sm">10 PM Night Check Messages</div>
               <div className="text-xs text-slate-500">
-                Send a WhatsApp message to parents when student exits (with entry + exit times)
-              </div>
-            </div>
-            <button
-              onClick={() => setWhatsappOnExit(!whatsappOnExit)}
-              className={`badge cursor-pointer ${whatsappOnExit ? 'bg-green-500 text-white' : 'bg-slate-200 text-slate-600'}`}
-            >
-              {whatsappOnExit ? 'ON' : 'OFF'}
-            </button>
-          </div>
-
-          {/* Absent Messages */}
-          <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-            <div>
-              <div className="font-semibold text-sm">Auto Absent Messages</div>
-              <div className="text-xs text-slate-500">
-                Automatically mark students absent and send WhatsApp if no punch detected by cutoff time. Keep OFF if you have connectivity issues with the biometric device.
+                At 10:00 PM IST, sends WhatsApp to parents of students who were absent or did not punch out
               </div>
             </div>
             <button
@@ -545,35 +517,6 @@ export default function AdminBiometric() {
               {absentEnabled ? 'ON' : 'OFF'}
             </button>
           </div>
-
-          {absentEnabled && (
-            <div className="grid grid-cols-2 gap-3 pl-3">
-              <div>
-                <label className="text-xs font-medium text-slate-600 block mb-1">
-                  🌅 Morning Absent Check
-                </label>
-                <input
-                  type="time"
-                  className="input text-sm"
-                  value={absentMorning}
-                  onChange={(e) => setAbsentMorning(e.target.value)}
-                />
-                <p className="text-xs text-slate-400 mt-1">Default: 9:00 AM</p>
-              </div>
-              <div>
-                <label className="text-xs font-medium text-slate-600 block mb-1">
-                  🌙 Evening Absent Check
-                </label>
-                <input
-                  type="time"
-                  className="input text-sm"
-                  value={absentEvening}
-                  onChange={(e) => setAbsentEvening(e.target.value)}
-                />
-                <p className="text-xs text-slate-400 mt-1">Default: 9:00 PM</p>
-              </div>
-            </div>
-          )}
 
           <button onClick={saveSettings} disabled={saving} className="btn-primary w-full">
             {saving ? (
@@ -603,15 +546,15 @@ export default function AdminBiometric() {
           </div>
           <div className="flex gap-2">
             <span className="font-bold text-blue-600">3.</span>
-            <span>When student punches in → system records entry time & sends WhatsApp to parent</span>
+            <span>1st punch = Entry → system records entry time. No WhatsApp sent.</span>
           </div>
           <div className="flex gap-2">
             <span className="font-bold text-blue-600">4.</span>
-            <span>When student punches out → system records exit time & sends detailed WhatsApp with both times</span>
+            <span>2nd punch = Exit → system records exit time & sends WhatsApp to parent with both times</span>
           </div>
           <div className="flex gap-2">
             <span className="font-bold text-blue-600">5.</span>
-            <span>If no punch detected by 9 AM (morning) or 9 PM (evening) → student marked absent & parent notified</span>
+            <span>At 10 PM IST, night check runs: absent students get a message, students who entered but did not punch out get a reminder</span>
           </div>
         </div>
       </div>

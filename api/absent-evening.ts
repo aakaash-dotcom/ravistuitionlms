@@ -17,11 +17,11 @@ export default async function handler(
 
   try {
     const response = await fetch(
-      `${supabaseUrl}/functions/v1/absent-whatsapp-cron?session=Evening`,
+      `${supabaseUrl}/functions/v1/absent-whatsapp-cron`,
       { method: 'GET', headers: { Authorization: `Bearer ${supabaseKey}`, apikey: supabaseKey } }
     );
     const data = await response.json();
-    return res.status(200).json({ success: true, session: 'Evening', data });
+    return res.status(200).json({ success: true, data });
   } catch (err) {
     return res.status(500).json({ error: String(err) });
   }
